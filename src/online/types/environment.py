@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Protocol
-from .space import Action, ActionSpace, State, StateSpace
+
+from online.types.space import Action, ActionSpace, State, StateSpace
 
 
 @dataclass

@@ -1,9 +1,17 @@
 from typing import Protocol
 
+from online.types.policy import Policy
+from online.types.space import ActionSpace, State, Action, StateSpace
+from online.types.environment import StepOutcome
 
-# This one has the most uncertainty to me.  I want there to be a Policy class
-# that contains the policy and methods for fitting it online and offline.  But
-# I'm not sure if an agent is conceptually distinct from a policy.  Maybe we
-# should iron that out in the design.
+
 class Agent(Protocol):
-    pass
+    policy: Policy
+    stateSpace: StateSpace
+    ActionSpace: ActionSpace
+
+    def act(self, state: State) -> Action:
+        raise NotImplementedError
+
+    def updatePolicy(self, state: State, action: Action, outcome: StepOutcome) -> None:
+        self.policy.onlineUpdate(state, action, outcome)

@@ -5,12 +5,15 @@ from typing import Protocol, TypeVar
 T = TypeVar("T", covariant=False, contravariant=False)
 
 
+# States will vary quite a bit between implementations, so I am just using this
+# class as a type stub.
 class State:
     pass
 
 
-class Action:
-    pass
+# Action spaces should always be countable.  Maybe we can change this in the
+# future, but I will be using int-typed enums for action spaces.
+Action = int
 
 
 class Space(Protocol[T]):
@@ -18,6 +21,8 @@ class Space(Protocol[T]):
         raise NotImplementedError
 
     def contains(self, element: T) -> bool:
+        # Not sure if this needs to exist in all circumstances.
+        # Maybe should be a method implemented only for gym spaces.
         raise NotImplementedError
 
 

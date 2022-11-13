@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+import numpy
 
 from online.types import StateSpace, ActionSpace, State, Action
 from online.utils import RobotDriver
@@ -11,8 +12,8 @@ class RobotState(State):
     # TODO: This should be a dataclass containing a snapshot of all sensor
     # readings at a time.  That would be readings from the camera and the
     # distance sensor.  I don't think the camera has a microphone.
-    cameraImg: Any
-    distanceSensor: Any
+    cameraImg: numpy.ndarray
+    distanceSensor: int
 
 
 class RobotStateSpace(StateSpace):

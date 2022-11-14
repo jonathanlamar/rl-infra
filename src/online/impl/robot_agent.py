@@ -2,6 +2,7 @@ from typing import Protocol
 from online.types import Agent
 from online.utils import RobotDriver
 
+
 class RobotAgent(Agent, Protocol):
     robot_driver: RobotDriver
 

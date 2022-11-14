@@ -1,7 +1,8 @@
-from online.impl import RobotState
 import picamera
 import picamera.array
 from easygopigo3 import EasyGoPiGo3
+
+from online.impl import RobotState
 
 
 class RobotDriver:

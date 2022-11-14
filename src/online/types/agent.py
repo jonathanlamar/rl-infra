@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from online.types.space import ActionSpace, State, Action, StateSpace
 from online.types.environment import StepOutcome
+from online.types.space import Action, ActionSpace, State, StateSpace
 
 
 class Agent(Protocol):

@@ -8,7 +8,7 @@ class Agent(Protocol):
     stateSpace: StateSpace
     ActionSpace: ActionSpace
 
-    def act(self, state: State) -> Action:
+    def chooseAction(self, state: State) -> Action:
         raise NotImplementedError
 
     def updatePolicy(self, state: State, action: Action, outcome: StepOutcome) -> None:

@@ -3,6 +3,7 @@ import picamera
 import picamera.array
 from easygopigo3 import EasyGoPiGo3
 
+
 class RobotDriver:
     def __init__(self) -> None:
         self.camera = picamera.PiCamera()
@@ -12,22 +13,21 @@ class RobotDriver:
 
     def takeSensorReading(self) -> RobotState:
         with picamera.array.PiRGBArray(self.camera) as output:
-            self.camera.capture(output, 'rgb')
+            self.camera.capture(output, "rgb")
             rgbArray = output.array
         dist = self.ds.read_mm()
 
         rs = RobotState(rgbArray, dist)
         return rs
 
+    def turnRight(self, degrees=15) -> None:
+        self.gpg.turn_degrees(degrees)
 
-    def turnRight(self, deg=15) -> None:
-        self.gpg.turn_degrees(deg)
+    def turnLeft(self, degrees=15) -> None:
+        self.gpg.turn_degrees(-degrees)
 
-    def turnLeft(self, deg=15) -> None:
-        self.gpg.turn_degrees(-deg)
+    def moveFoward(self, distance=10) -> None:
+        self.gpg.drive_cm(distance)
 
-    def moveFoward(self, dist=10) -> None:
-        self.gpg.drive_cm(dist)
-
-    def moveBack(self, dist=10) -> None:
-        self.gpg.drive_cm(-dist)
+    def moveBack(self, distance=10) -> None:
+        self.gpg.drive_cm(-distance)

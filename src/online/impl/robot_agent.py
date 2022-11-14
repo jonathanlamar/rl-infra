@@ -11,3 +11,9 @@ class RobotAgent(Agent, Protocol):
 
     def __init__(self, robot_driver: RobotDriver) -> None:
         self.robot_driver = robot_driver
+
+    def chooseAction(self, state: State) -> Action:
+        return super().chooseAction(state)
+
+    def updatePolicy(self, state: State, action: Action, outcome: StepOutcome) -> None:
+        return super().updatePolicy(state, action, outcome)

@@ -1,5 +1,8 @@
 from typing import Protocol
+
 from online.types import Agent
+from online.types.environment import StepOutcome
+from online.types.space import Action, State
 from online.utils import RobotDriver
 
 

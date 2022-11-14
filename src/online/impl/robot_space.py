@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+
 import numpy
 
-from online.types import StateSpace, ActionSpace, State, Action
+from online.types import Action, ActionSpace, State, StateSpace
 from online.utils import RobotDriver
 
 

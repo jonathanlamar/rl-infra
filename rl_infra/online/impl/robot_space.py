@@ -15,7 +15,9 @@ class RobotState(State):
 
 class RobotStateSpace(StateSpace):
     def sample(self) -> RobotState:
-        return RobotClient.getSensorReading()
+        img, dist = RobotClient.getSensorReading()
+
+        return RobotState(img, dist)
 
     def contains(self, _: RobotState) -> bool:
         return False

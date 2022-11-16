@@ -3,8 +3,8 @@ from enum import Enum
 
 import numpy
 
-from online.types import Action, ActionSpace, State, StateSpace
-from online.utils import RobotClient
+from rl_infra.online.types import Action, ActionSpace, State, StateSpace
+from rl_infra.online.utils import RobotClient
 
 
 @dataclass

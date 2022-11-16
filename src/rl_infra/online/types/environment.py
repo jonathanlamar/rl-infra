@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Protocol
 
-from online.types.space import Action, ActionSpace, State, StateSpace
+from rl_infra.online.types.space import Action, ActionSpace, State, StateSpace
 
 
 @dataclass

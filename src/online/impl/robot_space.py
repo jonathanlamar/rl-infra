@@ -4,24 +4,18 @@ from enum import Enum
 import numpy
 
 from online.types import Action, ActionSpace, State, StateSpace
-from online.utils import RobotDriver
+from online.utils import RobotClient
 
 
 @dataclass
 class RobotState(State):
-    # TODO: This should be a dataclass containing a snapshot of all sensor
-    # readings at a time.  That would be readings from the camera and the
-    # distance sensor.  I don't think the camera has a microphone.
     cameraImg: numpy.ndarray
     distanceSensor: int
 
 
 class RobotStateSpace(StateSpace):
-    def __init__(self, robot_driver: RobotDriver) -> None:
-        self.robot_driver = robot_driver
-
     def sample(self) -> RobotState:
-        return self.robot_driver.takeSensorReading()
+        return RobotClient.getSensorReading()
 
     def contains(self, _: RobotState) -> bool:
         return False

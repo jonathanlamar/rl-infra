@@ -1,34 +1,26 @@
-import picamera
-import picamera.array
-from easygopigo3 import EasyGoPiGo3
+import requests
 
-from online.impl import RobotState
+from edge import config
+from edge.utils import uncompress_nparr
+from online.impl import RobotAction, RobotState
 
 
-class RobotDriver:
-    def __init__(self) -> None:
-        self.camera = picamera.PiCamera()
-        self.camera.resolution = (640, 480)
-        self.gpg = EasyGoPiGo3()
-        self.ds = self.gpg.init_distance_sensor()
+class RobotClient:
+    url = f"http://{config.SERVER_HOST}:{config.SERVER_PORT}"
 
-    def takeSensorReading(self) -> RobotState:
-        with picamera.array.PiRGBArray(self.camera) as output:
-            self.camera.capture(output, "rgb")
-            rgbArray = output.array
-        dist = self.ds.read_mm()
+    @staticmethod
+    def sendAction(action: RobotAction):
+        _ = requests.post(url=RobotClient.url + config.MOVE_PATH, data=str(action))
 
-        rs = RobotState(rgbArray, dist)
-        return rs
+    @staticmethod
+    def getSensorReading() -> RobotState:
+        imgResponse = requests.get(
+            url=RobotClient.url + config.IMG_PATH,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        img = uncompress_nparr(imgResponse.content)
 
-    def turnRight(self, degrees=15) -> None:
-        self.gpg.turn_degrees(degrees)
+        distResponse = requests.get(url=RobotClient.url + config.DIST_PATH)
+        dist = int(distResponse.content)
 
-    def turnLeft(self, degrees=15) -> None:
-        self.gpg.turn_degrees(-degrees)
-
-    def moveFoward(self, distance=10) -> None:
-        self.gpg.drive_cm(distance)
-
-    def moveBack(self, distance=10) -> None:
-        self.gpg.drive_cm(-distance)
+        return RobotState(img, dist)

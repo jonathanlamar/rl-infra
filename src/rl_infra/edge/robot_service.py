@@ -4,8 +4,8 @@ from flask.wrappers import Response
 import picamera
 import picamera.array
 
-from edge import config
-from edge.utils import compress_nparr
+from rl_infra.edge import config
+from rl_infra.edge.utils import compress_nparr
 
 camera = picamera.PiCamera()
 camera.resolution = (640, 480)

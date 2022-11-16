@@ -1,8 +1,8 @@
 import requests
 
-from edge import config
-from edge.utils import uncompress_nparr
-from online.impl import RobotAction, RobotState
+from rl_infra.edge import config
+from rl_infra.edge.utils import uncompress_nparr
+from rl_infra.online.impl import RobotAction, RobotState
 
 
 class RobotClient:

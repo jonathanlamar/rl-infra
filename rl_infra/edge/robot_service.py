@@ -3,6 +3,7 @@ from flask import Flask, request
 from flask.wrappers import Response
 import picamera
 import picamera.array
+from IPython import embed
 
 from rl_infra.edge import config
 from rl_infra.edge.utils import compress_nparr
@@ -34,8 +35,8 @@ def sendDistanceReading():
 @app.route(config.MOVE_PATH, methods=["POST"])
 def move():
     req = request
-    action = int(req.data["action"])
-    arg = int(req.data["arg"])
+    action = int(req.json["action"])
+    arg = int(req.json["arg"])
 
     if action == 1:
         gpg.drive_cm(arg)

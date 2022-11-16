@@ -4,8 +4,8 @@ from flask.wrappers import Response
 import picamera
 import picamera.array
 
-from edge.utils import compress_nparr
 from edge import config
+from edge.utils import compress_nparr
 
 camera = picamera.PiCamera()
 camera.resolution = (640, 480)
@@ -26,7 +26,7 @@ def sendCompressedImage():
 
 @app.route(config.DIST_PATH, methods=["GET"])
 def sendDistanceReading():
-    resp = ds.read_mm()
+    resp = str(ds.read_mm())
 
     return Response(response=resp, status=200)
 

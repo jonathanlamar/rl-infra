@@ -1,13 +1,12 @@
 import json
 from typing import Tuple
-from PIL import Image
 
-from IPython import embed
+from PIL import Image
 import numpy
 import requests
 
-from rl_infra.edge import config
-from rl_infra.edge.utils import uncompress_nparr
+from ...edge import config
+from ...edge.utils import uncompress_nparr
 
 
 class RobotClient:
@@ -16,11 +15,13 @@ class RobotClient:
     @staticmethod
     def sendAction(action: int, arg: int) -> None:
         data = {"action": action, "arg": arg}
-        requests.post(
+        print(f"Sending data {data}")
+        resp = requests.post(
             url=RobotClient.url + config.MOVE_PATH,
             data=json.dumps(data),
             headers={"Content-type": "application/json"},
         )
+        print(f"Response = {resp}")
 
     @staticmethod
     def getSensorReading() -> Tuple[numpy.ndarray, int]:

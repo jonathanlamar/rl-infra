@@ -1,13 +1,17 @@
-from typing import Protocol
+from numpy import random
 
-from rl_infra.online.types import Agent
-from rl_infra.online.types.environment import StepOutcome
-from rl_infra.online.types.space import Action, State
+from .robot_environment import RobotAction, RobotActionSpace, RobotState
+from ..types.agent import Agent
+from ..types.environment import StepOutcome
 
 
-class RobotAgent(Agent, Protocol):
-    def chooseAction(self, state: State) -> Action:
-        return super().chooseAction(state)
+class RobotAgent(Agent[RobotState, RobotAction]):
+    def chooseAction(self, state: RobotState) -> RobotAction:
+        # TODO: Implement
+        return random.choice(list(RobotActionSpace))
 
-    def updatePolicy(self, state: State, action: Action, outcome: StepOutcome) -> None:
-        return super().updatePolicy(state, action, outcome)
+    def updatePolicy(
+        self, state: RobotState, action: RobotAction, outcome: StepOutcome
+    ) -> None:
+        # TODO: Implement
+        pass

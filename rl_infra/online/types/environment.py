@@ -1,23 +1,29 @@
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Protocol, TypeVar
 
-from rl_infra.online.types.space import Action, ActionSpace, State, StateSpace
+
+# States will vary quite a bit between implementations, so I am just using this
+# class as a type stub.
+class State:
+    pass
+
+
+# Action spaces should always be countable.  Maybe we can change this in the
+# future, but I will be using int-typed enums for action spaces.
+Action = int
+S = TypeVar("S", bound=State, covariant=False, contravariant=False)
+A = TypeVar("A", bound=Action, covariant=False, contravariant=True)
 
 
 @dataclass
-class StepOutcome:
-    newState: State
+class StepOutcome(Protocol[S]):
+    newState: S
     reward: float
     isTerminal: bool
 
 
-class Environment(Protocol):
-    actionSpace: ActionSpace
-    stateSpace: StateSpace
-    currentState: State
+class Environment(Protocol[S, A]):
+    currentState: S
 
-    def step(self, action: Action) -> StepOutcome:
-        raise NotImplementedError
-
-    def reset(self, seed: Optional[int], *args, **kwargs) -> State:
+    def step(self, action: A) -> StepOutcome[S]:
         raise NotImplementedError

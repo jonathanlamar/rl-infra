@@ -3,10 +3,9 @@ from flask import Flask, request
 from flask.wrappers import Response
 import picamera
 import picamera.array
-from IPython import embed
 
-from rl_infra.edge import config
-from rl_infra.edge.utils import compress_nparr
+from . import config
+from .utils import compress_nparr
 
 camera = picamera.PiCamera()
 camera.resolution = (640, 480)
@@ -34,25 +33,19 @@ def sendDistanceReading():
 
 @app.route(config.MOVE_PATH, methods=["POST"])
 def move():
-    req = request
-    action = int(req.json["action"])
-    arg = int(req.json["arg"])
+    if request.json is None:
+        return Response(response="Bad request format", status=400)
+
+    action = int(request.json["action"])
+    arg = int(request.json["arg"])
 
     if action == 1:
         gpg.drive_cm(arg)
-        resp = "Moving forward"
+        resp = "Moving %d cm".format(arg)
         status = 200
     elif action == 2:
-        gpg.drive_cm(-arg)
-        resp = "Moving backward"
-        status = 200
-    elif action == 3:
         gpg.turn_degrees(arg)
-        resp = "Turning left"
-        status = 200
-    elif action == 4:
-        gpg.turn_degrees(-arg)
-        resp = "Turning right"
+        resp = "Turning %d deg".format(arg)
         status = 200
     else:
         resp = "Bad action request"

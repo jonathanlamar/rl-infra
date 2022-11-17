@@ -1,15 +1,14 @@
-from typing import Protocol
+from typing import Protocol, TypeVar
 
-from rl_infra.online.types.environment import StepOutcome
-from rl_infra.online.types.space import Action, ActionSpace, State, StateSpace
+from ..types.environment import Action, State, StepOutcome
+
+S = TypeVar("S", bound=State, covariant=False, contravariant=True)
+A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
 
 
-class Agent(Protocol):
-    stateSpace: StateSpace
-    ActionSpace: ActionSpace
-
-    def chooseAction(self, state: State) -> Action:
+class Agent(Protocol[S, A]):
+    def chooseAction(self, state: S) -> A:
         raise NotImplementedError
 
-    def updatePolicy(self, state: State, action: Action, outcome: StepOutcome) -> None:
+    def updatePolicy(self, state: S, action: A, outcome: StepOutcome) -> None:
         raise NotImplementedError

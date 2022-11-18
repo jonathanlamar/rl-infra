@@ -36,7 +36,7 @@ def move():
     if request.json is None:
         return Response(response="Bad request format", status=400)
 
-    action = int(request.json["action"])
+    action = request.json["action"]
     arg = int(request.json["arg"])
 
     if action == "move":

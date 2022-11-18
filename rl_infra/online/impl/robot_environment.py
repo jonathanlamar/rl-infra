@@ -23,11 +23,11 @@ class RobotStepOutcome(StepOutcome[RobotState]):
 RobotAction = Action
 
 
-class RobotActionSpace(Enum):
-    MOVE_FORWARD = 1
-    MOVE_BACKWARD = 2
-    TURN_LEFT = 3
-    TURN_RIGHT = 4
+class RobotActionSpace(str, Enum):
+    MOVE_FORWARD = "MOVE_FORWARD"
+    MOVE_BACKWARD = "MOVE_BACKWARD"
+    TURN_LEFT = "TURN_LEFT"
+    TURN_RIGHT = "TURN_RIGHT"
 
 
 class RobotEnvironment(Environment[RobotState, RobotAction]):
@@ -49,6 +49,8 @@ class RobotEnvironment(Environment[RobotState, RobotAction]):
             RobotClient.sendAction(2, arg=self.turnStepSizeDeg)
         elif action == RobotActionSpace.TURN_LEFT:
             RobotClient.sendAction(2, arg=-self.turnStepSizeDeg)
+        else:
+            raise KeyError(f"Wrong action {action}")
 
         newState = RobotEnvironment._getState()
         self.currentState = newState

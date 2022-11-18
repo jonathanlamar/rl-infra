@@ -48,24 +48,22 @@ class RobotClient:
 
     @staticmethod
     def buzz(numberOfTones: int) -> None:
-        data = {"frequecy": 440, "length": 0.25}
-        for _ in range(numberOfTones):
-            response = requests.post(
-                url=RobotClient.url + config.BUZZ_PATH,
-                data=json.dumps(data),
-                headers={"Content-type": "application/json"},
-            )
-            if response.status_code != 200:
-                raise requests.HTTPError("Failed to light LED")
+        data = {"numberOfTones": numberOfTones}
+        response = requests.post(
+            url=RobotClient.url + config.LIGHT_PATH,
+            data=json.dumps(data),
+            headers={"Content-type": "application/json"},
+        )
+        if response.status_code != 200:
+            raise requests.HTTPError("Failed to activate buzzer")
 
     @staticmethod
     def blinkLed(numberOfBlinks: int) -> None:
-        data = {"power": 100, "length": 0.25}
-        for _ in range(numberOfBlinks):
-            response = requests.post(
-                url=RobotClient.url + config.LIGHT_PATH,
-                data=json.dumps(data),
-                headers={"Content-type": "application/json"},
-            )
-            if response.status_code != 200:
-                raise requests.HTTPError("Failed to light LED")
+        data = {"numberOfBlinks": numberOfBlinks}
+        response = requests.post(
+            url=RobotClient.url + config.LIGHT_PATH,
+            data=json.dumps(data),
+            headers={"Content-type": "application/json"},
+        )
+        if response.status_code != 200:
+            raise requests.HTTPError("Failed to light LED")

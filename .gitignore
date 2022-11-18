@@ -9,6 +9,8 @@ __pycache__/
 *~
 stubs/*
 !stubs/.gitkeep
+data/*
+!data/.gitkeep
 
 # due to using tox and pytest
 .tox

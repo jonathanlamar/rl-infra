@@ -15,13 +15,11 @@ class RobotClient:
     @staticmethod
     def sendAction(action: int, arg: int) -> None:
         data = {"action": action, "arg": arg}
-        print(f"Sending data {data}")
-        resp = requests.post(
+        requests.post(
             url=RobotClient.url + config.MOVE_PATH,
             data=json.dumps(data),
             headers={"Content-type": "application/json"},
         )
-        print(f"Response = {resp}")
 
     @staticmethod
     def getSensorReading() -> Tuple[numpy.ndarray, int]:

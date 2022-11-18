@@ -8,9 +8,7 @@ class State:
     pass
 
 
-# Action spaces should always be countable.  Maybe we can change this in the
-# future, but I will be using int-typed enums for action spaces.
-Action = int
+Action = str
 S = TypeVar("S", bound=State, covariant=False, contravariant=False)
 A = TypeVar("A", bound=Action, covariant=False, contravariant=True)
 

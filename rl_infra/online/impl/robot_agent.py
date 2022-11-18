@@ -1,8 +1,8 @@
-from numpy import random
+import random
 
-from .robot_environment import RobotAction, RobotActionSpace, RobotState
 from ..types.agent import Agent
 from ..types.environment import StepOutcome
+from .robot_environment import RobotAction, RobotActionSpace, RobotState
 
 
 class RobotAgent(Agent[RobotState, RobotAction]):

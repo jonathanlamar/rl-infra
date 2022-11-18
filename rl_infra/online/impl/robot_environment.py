@@ -42,13 +42,13 @@ class RobotEnvironment(Environment[RobotState, RobotAction]):
 
     def step(self, action: RobotAction) -> StepOutcome:
         if action == RobotActionSpace.MOVE_FORWARD:
-            RobotClient.sendAction(1, arg=self.moveStepSizeCm)
+            RobotClient.sendAction("move", arg=self.moveStepSizeCm)
         elif action == RobotActionSpace.MOVE_BACKWARD:
-            RobotClient.sendAction(1, arg=-self.moveStepSizeCm)
+            RobotClient.sendAction("move", arg=-self.moveStepSizeCm)
         elif action == RobotActionSpace.TURN_RIGHT:
-            RobotClient.sendAction(2, arg=self.turnStepSizeDeg)
+            RobotClient.sendAction("turn", arg=self.turnStepSizeDeg)
         elif action == RobotActionSpace.TURN_LEFT:
-            RobotClient.sendAction(2, arg=-self.turnStepSizeDeg)
+            RobotClient.sendAction("turn", arg=-self.turnStepSizeDeg)
         else:
             raise KeyError(f"Wrong action {action}")
 

@@ -50,7 +50,7 @@ class RobotClient:
     def buzz(numberOfTones: int) -> None:
         data = {"numberOfTones": numberOfTones}
         response = requests.post(
-            url=RobotClient.url + config.LIGHT_PATH,
+            url=RobotClient.url + config.BUZZ_PATH,
             data=json.dumps(data),
             headers={"Content-type": "application/json"},
         )

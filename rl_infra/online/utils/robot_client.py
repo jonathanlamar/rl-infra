@@ -15,11 +15,13 @@ class RobotClient:
     @staticmethod
     def sendAction(action: str, arg: int) -> None:
         data = {"action": action, "arg": arg}
-        requests.post(
+        response = requests.post(
             url=RobotClient.url + config.MOVE_PATH,
             data=json.dumps(data),
             headers={"Content-type": "application/json"},
         )
+        if response.status_code != 200:
+            raise requests.HTTPError("Failed to get distance reading")
 
     @staticmethod
     def getSensorReading() -> Tuple[numpy.ndarray, int]:
@@ -27,9 +29,13 @@ class RobotClient:
             url=RobotClient.url + config.IMG_PATH,
             headers={"Content-Type": "application/octet-stream"},
         )
+        if imgResponse.status_code != 200:
+            raise requests.HTTPError("Failed to get image")
         img = uncompress_nparr(imgResponse.content)
 
         distResponse = requests.get(url=RobotClient.url + config.DIST_PATH)
+        if distResponse.status_code != 200:
+            raise requests.HTTPError("Failed to get distance reading")
         dist = int(distResponse.content)
 
         return img, dist
@@ -39,3 +45,27 @@ class RobotClient:
     def saveArrayAsJpeg(img: numpy.ndarray, filePath: str) -> None:
         im = Image.fromarray(img)
         im.save(filePath)
+
+    @staticmethod
+    def buzz(numberOfTones: int) -> None:
+        data = {"frequecy": 440, "length": 0.25}
+        for _ in range(numberOfTones):
+            response = requests.post(
+                url=RobotClient.url + config.BUZZ_PATH,
+                data=json.dumps(data),
+                headers={"Content-type": "application/json"},
+            )
+            if response.status_code != 200:
+                raise requests.HTTPError("Failed to light LED")
+
+    @staticmethod
+    def blinkLed(numberOfBlinks: int) -> None:
+        data = {"power": 100, "length": 0.25}
+        for _ in range(numberOfBlinks):
+            response = requests.post(
+                url=RobotClient.url + config.LIGHT_PATH,
+                data=json.dumps(data),
+                headers={"Content-type": "application/json"},
+            )
+            if response.status_code != 200:
+                raise requests.HTTPError("Failed to light LED")

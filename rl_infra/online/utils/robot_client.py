@@ -10,7 +10,7 @@ from ...edge.utils import uncompress_nparr
 
 
 class RobotClient:
-    url = f"http://{config.CLIENT_HOST}:{config.SERVER_PORT}"
+    url = f"http://{config.SERVER_HOST}:{config.SERVER_PORT}"
 
     @staticmethod
     def sendAction(action: str, arg: int) -> None:

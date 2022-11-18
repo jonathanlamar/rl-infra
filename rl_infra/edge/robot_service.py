@@ -63,13 +63,15 @@ def buzz():
     if request.json is None:
         return Response(response="Bad request format", status=400)
 
-    frequecy = int(request.json["frequency"])
-    length = int(request.json["length"])
-    buzzer.sound(frequecy)
-    time.sleep(length)
-    buzzer.sound_off()
+    numberOfTones = int(request.json["numberOfTones"])
 
-    return Response(response="A4", status=200)
+    for _ in range(numberOfTones):
+        buzzer.sound(440)
+        time.sleep(0.25)
+        buzzer.sound_off()
+        time.sleep(0.25)
+
+    return Response(response="Done", status=200)
 
 
 @app.route(config.LIGHT_PATH, methods=["POST"])
@@ -77,14 +79,15 @@ def light():
     if request.json is None:
         return Response(response="Bad request format", status=400)
 
-    power = int(request.json["power"])
-    length = int(request.json["length"])
+    numberOfBlinks = int(request.json["numberOfBlinks"])
 
-    led.light_on(power)
-    time.sleep(length)
-    led.light_off()
+    for _ in range(numberOfBlinks):
+        led.light_max()
+        time.sleep(0.25)
+        led.light_off()
+        time.sleep(0.25)
 
-    return Response(response="A4", status=200)
+    return Response(response="Done", status=200)
 
 
 if __name__ == "__main__":

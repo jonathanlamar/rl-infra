@@ -24,7 +24,7 @@ for step in range(100):
     actions.append(action)
     outcome = env.step(action)
     rewards.append(outcome.reward)
-    imgPath = f"data/img{step}.jpg"
+    imgPath = f"data/img{step:02}.jpg"
     RobotClient.saveArrayAsJpeg(outcome.newState.cameraImg, filePath=imgPath)
     states.append({"distance": env.currentState.distanceSensor, "imgPath": imgPath})
 

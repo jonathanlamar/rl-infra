@@ -13,7 +13,7 @@ class RobotClient:
     url = f"http://{config.CLIENT_HOST}:{config.SERVER_PORT}"
 
     @staticmethod
-    def sendAction(action: int, arg: int) -> None:
+    def sendAction(action: str, arg: int) -> None:
         data = {"action": action, "arg": arg}
         requests.post(
             url=RobotClient.url + config.MOVE_PATH,

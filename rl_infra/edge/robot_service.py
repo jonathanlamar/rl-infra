@@ -39,11 +39,11 @@ def move():
     action = int(request.json["action"])
     arg = int(request.json["arg"])
 
-    if action == 1:
+    if action == "move":
         gpg.drive_cm(arg)
         resp = "Moving %d cm".format(arg)
         status = 200
-    elif action == 2:
+    elif action == "turn":
         gpg.turn_degrees(arg)
         resp = "Turning %d deg".format(arg)
         status = 200

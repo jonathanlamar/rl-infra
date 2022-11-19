@@ -21,6 +21,9 @@ rewards = []
 
 for step in range(100):
     action = agent.chooseAction(env.currentState)
+    print(
+        f"Current distance reading {env.currentState.distanceSensor}.\nChose action {action}"
+    )
     actions.append(action)
     outcome = env.step(action)
     rewards.append(outcome.reward)

@@ -1,4 +1,5 @@
 import time
+from IPython import embed
 
 from easygopigo3 import EasyGoPiGo3
 from flask import Flask, request
@@ -42,6 +43,7 @@ def move():
 
     action = request.json["action"]
     arg = int(request.json["arg"])
+    embed()
 
     if action == "move":
         goPiGo.drive_cm(arg)

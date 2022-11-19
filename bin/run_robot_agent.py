@@ -20,7 +20,7 @@ for file in files:
     if os.path.exists(file):
         os.remove(file)
 
-env = RobotEnvironment(moveStepSizeCm=5, turnStepSizeDeg=15)
+env = RobotEnvironment(moveStepSizeCm=50, turnStepSizeDeg=45)
 agent = RobotAgent()
 actions = []
 states = []

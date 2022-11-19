@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import dataclasses
+import glob
 import json
+import os
 
 from rl_infra.online.impl import RobotAgent, RobotEnvironment
 from rl_infra.online.utils import RobotClient
@@ -12,6 +14,11 @@ class CustomJsonEncoder(json.JSONEncoder):
             return dataclasses.asdict(o)
         return super().default(o)
 
+files = glob.glob("data/*.jpg")
+files.append("data/history.json")
+for file in files:
+    if os.path.exists(file):
+        os.remove(file)
 
 env = RobotEnvironment(moveStepSizeCm=5, turnStepSizeDeg=15)
 agent = RobotAgent()

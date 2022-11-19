@@ -1,7 +1,6 @@
 import json
 from typing import Tuple
 
-from IPython import embed
 from PIL import Image
 import numpy
 import requests
@@ -21,9 +20,10 @@ class RobotClient:
             data=json.dumps(data),
             headers={"Content-type": "application/json"},
         )
-        embed()
         if response.status_code != 200:
             raise requests.HTTPError("Failed to get distance reading")
+        else:
+            print(response.content.decode("utf-8"))
 
     @staticmethod
     def getSensorReading() -> Tuple[numpy.ndarray, int]:

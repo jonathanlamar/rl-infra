@@ -1,5 +1,4 @@
 import time
-from IPython import embed
 
 from easygopigo3 import EasyGoPiGo3
 from flask import Flask, request
@@ -43,15 +42,14 @@ def move():
 
     action = request.json["action"]
     arg = int(request.json["arg"])
-    embed()
 
     if action == "move":
         goPiGo.drive_cm(arg)
-        resp = "Moving %d cm".format(arg)
+        resp = "Moving {} cm".format(arg)
         status = 200
     elif action == "turn":
         goPiGo.turn_degrees(arg)
-        resp = "Turning %d deg".format(arg)
+        resp = "Turning {} deg".format(arg)
         status = 200
     else:
         resp = "Bad action request"

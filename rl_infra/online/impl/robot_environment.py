@@ -33,7 +33,7 @@ class RobotEnvironment(Environment[RobotState, RobotAction]):
     moveStepSizeCm: int
     turnStepSizeDeg: int
 
-    def __init__(self, moveStepSizeCm: int = 5, turnStepSizeDeg: int = 20) -> None:
+    def __init__(self, moveStepSizeCm: int = 15, turnStepSizeDeg: int = 30) -> None:
         self.moveStepSizeCm = moveStepSizeCm
         self.turnStepSizeDeg = turnStepSizeDeg
         self.currentState = RobotEnvironment._getState()

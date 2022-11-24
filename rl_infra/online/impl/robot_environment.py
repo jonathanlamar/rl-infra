@@ -38,7 +38,7 @@ class RobotEnvironment(Environment[RobotState, RobotAction]):
         self.turnStepSizeDeg = turnStepSizeDeg
         self.currentState = RobotEnvironment._getState()
 
-    def step(self, action: RobotAction) -> StepOutcome:
+    def step(self, action: RobotAction) -> RobotStepOutcome:
         if action == RobotAction.MOVE_FORWARD:
             RobotClient.sendAction("move", arg=self.moveStepSizeCm)
         elif action == RobotAction.MOVE_BACKWARD:

@@ -20,14 +20,12 @@ class RobotStepOutcome(StepOutcome[RobotState]):
     isTerminal: bool
 
 
-RobotAction = Action
-
-
-class RobotActionSpace(str, Enum):
+class RobotAction(Action, Enum):
     MOVE_FORWARD = "MOVE_FORWARD"
     MOVE_BACKWARD = "MOVE_BACKWARD"
     TURN_LEFT = "TURN_LEFT"
     TURN_RIGHT = "TURN_RIGHT"
+    DO_NOTHING = "DO_NOTHING"
 
 
 class RobotEnvironment(Environment[RobotState, RobotAction]):
@@ -35,21 +33,21 @@ class RobotEnvironment(Environment[RobotState, RobotAction]):
     moveStepSizeCm: int
     turnStepSizeDeg: int
 
-    def __init__(self, moveStepSizeCm: int = 1, turnStepSizeDeg: int = 15) -> None:
+    def __init__(self, moveStepSizeCm: int = 15, turnStepSizeDeg: int = 30) -> None:
         self.moveStepSizeCm = moveStepSizeCm
         self.turnStepSizeDeg = turnStepSizeDeg
         self.currentState = RobotEnvironment._getState()
 
-    def step(self, action: RobotAction) -> StepOutcome:
-        if action == RobotActionSpace.MOVE_FORWARD:
+    def step(self, action: RobotAction) -> RobotStepOutcome:
+        if action == RobotAction.MOVE_FORWARD:
             RobotClient.sendAction("move", arg=self.moveStepSizeCm)
-        elif action == RobotActionSpace.MOVE_BACKWARD:
+        elif action == RobotAction.MOVE_BACKWARD:
             RobotClient.sendAction("move", arg=-self.moveStepSizeCm)
-        elif action == RobotActionSpace.TURN_RIGHT:
+        elif action == RobotAction.TURN_RIGHT:
             RobotClient.sendAction("turn", arg=self.turnStepSizeDeg)
-        elif action == RobotActionSpace.TURN_LEFT:
+        elif action == RobotAction.TURN_LEFT:
             RobotClient.sendAction("turn", arg=-self.turnStepSizeDeg)
-        else:
+        elif action != RobotAction.DO_NOTHING:
             raise KeyError(f"Wrong action {action}")
 
         newState = RobotEnvironment._getState()

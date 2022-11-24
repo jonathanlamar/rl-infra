@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import dataclasses
+import glob
 import json
+import os
 
 from rl_infra.online.impl import RobotAgent, RobotEnvironment
 from rl_infra.online.utils import RobotClient
@@ -12,8 +14,13 @@ class CustomJsonEncoder(json.JSONEncoder):
             return dataclasses.asdict(o)
         return super().default(o)
 
+files = glob.glob("data/*.jpg")
+files.append("data/history.json")
+for file in files:
+    if os.path.exists(file):
+        os.remove(file)
 
-env = RobotEnvironment(moveStepSizeCm=5, turnStepSizeDeg=15)
+env = RobotEnvironment(moveStepSizeCm=50, turnStepSizeDeg=45)
 agent = RobotAgent()
 actions = []
 states = []
@@ -21,6 +28,9 @@ rewards = []
 
 for step in range(100):
     action = agent.chooseAction(env.currentState)
+    print(
+        f"Current distance reading {env.currentState.distanceSensor}.\nChose action {action}"
+    )
     actions.append(action)
     outcome = env.step(action)
     rewards.append(outcome.reward)

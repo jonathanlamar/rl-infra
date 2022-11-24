@@ -60,7 +60,7 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
     @abstractmethod
     def getReward(
         self, oldState: RobotState, action: RobotAction, newState: RobotState
-    ) -> int:
+    ) -> float:
         ...
 
     @staticmethod

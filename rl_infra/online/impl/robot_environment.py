@@ -1,7 +1,8 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
-import numpy
+from numpy import ndarray
 
 from ..types.environment import Action, Environment, State, StepOutcome
 from ..utils.robot_client import RobotClient
@@ -9,7 +10,7 @@ from ..utils.robot_client import RobotClient
 
 @dataclass
 class RobotState(State):
-    cameraImg: numpy.ndarray
+    cameraImg: ndarray
     distanceSensor: int
 
 
@@ -28,7 +29,7 @@ class RobotAction(Action, Enum):
     DO_NOTHING = "DO_NOTHING"
 
 
-class RobotEnvironment(Environment[RobotState, RobotAction]):
+class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
     currentState: RobotState
     moveStepSizeCm: int
     turnStepSizeDeg: int
@@ -53,8 +54,14 @@ class RobotEnvironment(Environment[RobotState, RobotAction]):
         newState = RobotEnvironment._getState()
         self.currentState = newState
 
-        # TODO: Where does the reward logic live?
-        return RobotStepOutcome(newState=newState, reward=0, isTerminal=False)
+        reward = self.getReward(self.currentState, action, newState)
+        return RobotStepOutcome(newState=newState, reward=reward, isTerminal=False)
+
+    @abstractmethod
+    def getReward(
+        self, oldState: RobotState, action: RobotAction, newState: RobotState
+    ) -> int:
+        ...
 
     @staticmethod
     def _getState() -> RobotState:

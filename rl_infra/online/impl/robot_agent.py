@@ -1,10 +1,11 @@
+from abc import ABC, abstractmethod
 import random
 
 from ..types.agent import Agent
 from .robot_environment import RobotAction, RobotState, RobotStepOutcome
 
 
-class RobotAgent(Agent[RobotState, RobotAction]):
+class RobotAgent(ABC, Agent[RobotState, RobotAction]):
     lastAction: RobotAction
     nextAction: RobotAction
 
@@ -27,8 +28,8 @@ class RobotAgent(Agent[RobotState, RobotAction]):
 
         return action
 
+    @abstractmethod
     def updatePolicy(
         self, state: RobotState, action: RobotAction, outcome: RobotStepOutcome
     ) -> None:
-        # TODO: Implement
-        pass
+        ...

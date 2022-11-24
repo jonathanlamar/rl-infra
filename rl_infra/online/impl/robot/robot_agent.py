@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import random
 
-from ..types.agent import Agent
+from ...types.agent import Agent
 from .robot_environment import RobotAction, RobotState, RobotStepOutcome
 
 

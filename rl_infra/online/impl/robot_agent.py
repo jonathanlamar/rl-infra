@@ -1,8 +1,7 @@
 import random
 
 from ..types.agent import Agent
-from ..types.environment import StepOutcome
-from .robot_environment import RobotAction, RobotState
+from .robot_environment import RobotAction, RobotState, RobotStepOutcome
 
 
 class RobotAgent(Agent[RobotState, RobotAction]):
@@ -29,7 +28,7 @@ class RobotAgent(Agent[RobotState, RobotAction]):
         return action
 
     def updatePolicy(
-        self, state: RobotState, action: RobotAction, outcome: StepOutcome
+        self, state: RobotState, action: RobotAction, outcome: RobotStepOutcome
     ) -> None:
         # TODO: Implement
         pass

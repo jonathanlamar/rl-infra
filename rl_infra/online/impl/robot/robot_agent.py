@@ -13,7 +13,11 @@ class RobotAgent(ABC, Agent[RobotState, RobotAction]):
         self.lastAction = RobotAction.DO_NOTHING
         self.nextAction = RobotAction.MOVE_FORWARD
 
+    @abstractmethod
     def chooseAction(self, state: RobotState) -> RobotAction:
+        ...
+
+    def chooseExploreAction(self, state: RobotState) -> RobotAction:
         action = self.nextAction
         self.lastAction = action
 

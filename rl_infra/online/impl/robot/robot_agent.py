@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import random
 
 from ...types.agent import Agent
-from .robot_environment import RobotAction, RobotState, RobotStepOutcome
+from .robot_environment import RobotAction, RobotState, RobotTransition
 
 
 class RobotAgent(ABC, Agent[RobotState, RobotAction]):
@@ -33,7 +33,5 @@ class RobotAgent(ABC, Agent[RobotState, RobotAction]):
         return action
 
     @abstractmethod
-    def updatePolicy(
-        self, state: RobotState, action: RobotAction, outcome: RobotStepOutcome
-    ) -> None:
+    def updatePolicy(self, transition: RobotTransition) -> None:
         ...

@@ -4,7 +4,7 @@ from enum import Enum
 
 from numpy import ndarray
 
-from ...types.environment import Action, Environment, State, StepOutcome
+from ...types.environment import Action, Environment, State, Transition
 from .utils.robot_client import RobotClient
 
 
@@ -14,19 +14,21 @@ class RobotState(State):
     distanceSensor: int
 
 
-@dataclass
-class RobotStepOutcome(StepOutcome[RobotState]):
-    newState: RobotState
-    reward: float
-    isTerminal: bool
-
-
 class RobotAction(Action, Enum):
     MOVE_FORWARD = "MOVE_FORWARD"
     MOVE_BACKWARD = "MOVE_BACKWARD"
     TURN_LEFT = "TURN_LEFT"
     TURN_RIGHT = "TURN_RIGHT"
     DO_NOTHING = "DO_NOTHING"
+
+
+@dataclass
+class RobotTransition(Transition[RobotState, RobotAction]):
+    state: RobotState
+    action: RobotAction
+    newState: RobotState
+    reward: float
+    isTerminal: bool
 
 
 class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
@@ -39,7 +41,7 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
         self.turnStepSizeDeg = turnStepSizeDeg
         self.currentState = RobotEnvironment._getState()
 
-    def step(self, action: RobotAction) -> RobotStepOutcome:
+    def step(self, action: RobotAction) -> RobotTransition:
         if action == RobotAction.MOVE_FORWARD:
             RobotClient.sendAction("move", arg=self.moveStepSizeCm)
         elif action == RobotAction.MOVE_BACKWARD:
@@ -51,11 +53,18 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
         elif action != RobotAction.DO_NOTHING:
             raise KeyError(f"Wrong action {action}")
 
+        state = self.currentState
         newState = RobotEnvironment._getState()
         self.currentState = newState
 
         reward = self.getReward(self.currentState, action, newState)
-        return RobotStepOutcome(newState=newState, reward=reward, isTerminal=False)
+        return RobotTransition(
+            state=state,
+            action=action,
+            newState=newState,
+            reward=reward,
+            isTerminal=False,
+        )
 
     @abstractmethod
     def getReward(

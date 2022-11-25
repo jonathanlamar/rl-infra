@@ -5,7 +5,7 @@ from enum import Enum
 from numpy import ndarray
 
 from ...types.environment import Action, Environment, State, StepOutcome
-from ...utils.robot_client import RobotClient
+from .utils.robot_client import RobotClient
 
 
 @dataclass

@@ -10,11 +10,13 @@ class State:
 
 Action = str
 S = TypeVar("S", bound=State, covariant=False, contravariant=False)
-A = TypeVar("A", bound=Action, covariant=False, contravariant=True)
+A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
 
 
 @dataclass
-class StepOutcome(Protocol[S]):
+class Transition(Protocol[S, A]):
+    state: S
+    action: A
     newState: S
     reward: float
     isTerminal: bool
@@ -23,7 +25,7 @@ class StepOutcome(Protocol[S]):
 class Environment(Protocol[S, A]):
     currentState: S
 
-    def step(self, action: A) -> StepOutcome[S]:
+    def step(self, action: A) -> Transition[S, A]:
         raise NotImplementedError
 
     def getReward(self, oldState: State, action: Action, newState: State) -> float:

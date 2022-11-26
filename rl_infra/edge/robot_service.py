@@ -92,7 +92,7 @@ def light():
             time.sleep(0.25)
             led.light_off()
             time.sleep(0.25)
-        return Response(response=f"Blinked {numberOfBlinks} times", status=200)
+        return Response(response="Blinked {} times".format(numberOfBlinks), status=200)
     elif led.is_off():
         led.light_max()
         return Response(response="Turned LED on", status=200)

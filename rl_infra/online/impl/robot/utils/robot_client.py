@@ -69,3 +69,14 @@ class RobotClient:
         )
         if response.status_code != 200:
             raise requests.HTTPError("Failed to light LED")
+
+    @staticmethod
+    def switchLed() -> None:
+        data = {"switchLed": True}
+        response = requests.post(
+            url=RobotClient.url + config.LIGHT_PATH,
+            data=json.dumps(data),
+            headers={"Content-type": "application/json"},
+        )
+        if response.status_code != 200:
+            raise requests.HTTPError("Failed to switch LED")

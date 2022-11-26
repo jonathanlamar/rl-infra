@@ -77,17 +77,28 @@ def buzz():
 @app.route(config.LIGHT_PATH, methods=["POST"])
 def light():
     if request.json is None:
+        return Response(response="No payload", status=400)
+    payload = request.json
+
+    if (payload.get("numberOfBlinks") and payload.get("switchLed")) or (
+        not payload.get("numberOfBlinks") and not payload.get("switchLed")
+    ):
         return Response(response="Bad request format", status=400)
 
-    numberOfBlinks = int(request.json["numberOfBlinks"])
-
-    for _ in range(numberOfBlinks):
+    if payload.get("numberOfBlinks"):
+        numberOfBlinks = int(payload["numberOfBlinks"])
+        for _ in range(numberOfBlinks):
+            led.light_max()
+            time.sleep(0.25)
+            led.light_off()
+            time.sleep(0.25)
+        return Response(response=f"Blinked {numberOfBlinks} times", status=200)
+    elif led.is_off():
         led.light_max()
-        time.sleep(0.25)
+        return Response(response="Turned LED on", status=200)
+    else:
         led.light_off()
-        time.sleep(0.25)
-
-    return Response(response="Done", status=200)
+        return Response(response="Turned LED off", status=200)
 
 
 if __name__ == "__main__":

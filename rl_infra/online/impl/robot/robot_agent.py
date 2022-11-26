@@ -2,20 +2,33 @@ from abc import ABC, abstractmethod
 import random
 
 from ...types.agent import Agent
-from .robot_environment import RobotAction, RobotState, RobotTransition
+from .robot_environment import RobotAction, RobotState
 
 
 class RobotAgent(ABC, Agent[RobotState, RobotAction]):
+    epsilon: float
     lastAction: RobotAction
     nextAction: RobotAction
 
-    def __init__(self) -> None:
+    def __init__(self, epsilon: float = 0.1) -> None:
+        self.epsilon = epsilon
         self.lastAction = RobotAction.DO_NOTHING
         self.nextAction = RobotAction.MOVE_FORWARD
 
     @abstractmethod
-    def chooseAction(self, state: RobotState) -> RobotAction:
+    def choosePolicyAction(self, state: RobotState) -> RobotAction:
         ...
+
+    def chooseRandomAction(self) -> RobotAction:
+        return random.choice(
+            [
+                RobotAction.MOVE_FORWARD,
+                RobotAction.MOVE_BACKWARD,
+                RobotAction.TURN_LEFT,
+                RobotAction.TURN_RIGHT,
+                RobotAction.DO_NOTHING,
+            ]
+        )
 
     def chooseExploreAction(self, state: RobotState) -> RobotAction:
         action = self.nextAction
@@ -31,7 +44,3 @@ class RobotAgent(ABC, Agent[RobotState, RobotAction]):
             )
 
         return action
-
-    @abstractmethod
-    def updatePolicy(self, transition: RobotTransition) -> None:
-        ...

@@ -5,8 +5,8 @@ from PIL import Image
 import numpy
 import requests
 
-from ...edge import config
-from ...edge.utils import uncompress_nparr
+from .....edge import config
+from .....edge.utils import uncompress_nparr
 
 
 class RobotClient:

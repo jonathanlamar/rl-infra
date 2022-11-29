@@ -28,5 +28,5 @@ class Environment(Protocol[S, A]):
     def step(self, action: A) -> Transition[S, A]:
         raise NotImplementedError
 
-    def getReward(self, oldState: State, action: Action, newState: State) -> float:
+    def getReward(self, oldState: S, action: A, newState: S) -> float:
         raise NotImplementedError

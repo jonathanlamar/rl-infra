@@ -86,9 +86,14 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction]):
         self.gameState = GameState()
         self.currentState = TetrisState.fromGameState(self.gameState)
 
-    def step(self, action: TetrisAction):
+    def step(self, action: TetrisAction) -> TetrisTransition:
+        oldState = self.currentState
         self.gameState.update(action.toKeyPress())
+        isTerminal = self.gameState.dead
         self.currentState = TetrisState.fromGameState(self.gameState)
+        reward = self.getReward(oldState, action, self.currentState)
+
+        return TetrisTransition(oldState, action, self.currentState, reward, isTerminal)
 
     def getReward(
         self, oldState: TetrisState, action: TetrisAction, newState: TetrisState

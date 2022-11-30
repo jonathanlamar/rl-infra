@@ -2,7 +2,7 @@ import json
 from typing import Tuple
 
 from PIL import Image
-import numpy
+from numpy import ndarray, uint8
 import requests
 
 from .....edge import config
@@ -26,7 +26,7 @@ class RobotClient:
             print(response.content.decode("utf-8"))
 
     @staticmethod
-    def getSensorReading() -> Tuple[numpy.ndarray, int]:
+    def getSensorReading() -> Tuple[ndarray, int]:
         imgResponse = requests.get(
             url=RobotClient.url + config.IMG_PATH,
             headers={"Content-Type": "application/octet-stream"},
@@ -42,9 +42,10 @@ class RobotClient:
 
         return img, dist
 
-    # This should go with offline data collection, but I am saving here for now.
     @staticmethod
-    def saveArrayAsJpeg(img: numpy.ndarray, filePath: str) -> None:
+    def saveArrayAsJpeg(img: ndarray, filePath: str) -> None:
+        if img.dtype != uint8:
+            img = img.astype(uint8)
         im = Image.fromarray(img)
         im.save(filePath)
 

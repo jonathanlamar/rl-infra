@@ -3,6 +3,23 @@
   "exclude": ["stubs"],
   "stubPath": "stubs/",
   "reportMissingModuleSource": false,
-  "pythonVersion": "3.9",
+  "pythonVersion": "3.10",
+  "executionEnvironments": [
+    {
+      "root": "rl_infra/edge",
+      "pythonVersion": "3.5",
+      "pythonPlatform": "Linux"
+    },
+    {
+      "root": "rl_infra/offline",
+      "pythonVersion": "3.10",
+      "pythonPlatform": "Linux"
+    },
+    {
+      "root": "rl_infra/online",
+      "pythonVersion": "3.10",
+      "pythonPlatform": "Linux"
+    }
+  ],
   "pythonPlatform": "Linux"
 }

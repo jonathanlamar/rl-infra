@@ -42,16 +42,19 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
         self.currentState = RobotEnvironment._getState()
 
     def step(self, action: RobotAction) -> RobotTransition:
-        if action == RobotAction.MOVE_FORWARD:
-            RobotClient.sendAction("move", arg=self.moveStepSizeCm)
-        elif action == RobotAction.MOVE_BACKWARD:
-            RobotClient.sendAction("move", arg=-self.moveStepSizeCm)
-        elif action == RobotAction.TURN_RIGHT:
-            RobotClient.sendAction("turn", arg=self.turnStepSizeDeg)
-        elif action == RobotAction.TURN_LEFT:
-            RobotClient.sendAction("turn", arg=-self.turnStepSizeDeg)
-        elif action != RobotAction.DO_NOTHING:
-            raise KeyError(f"Wrong action {action}")
+        match action:
+            case RobotAction.MOVE_FORWARD:
+                RobotClient.sendAction("move", arg=self.moveStepSizeCm)
+            case RobotAction.MOVE_BACKWARD:
+                RobotClient.sendAction("move", arg=-self.moveStepSizeCm)
+            case RobotAction.TURN_RIGHT:
+                RobotClient.sendAction("turn", arg=self.turnStepSizeDeg)
+            case RobotAction.TURN_LEFT:
+                RobotClient.sendAction("turn", arg=-self.turnStepSizeDeg)
+            case RobotAction.DO_NOTHING:
+                pass
+            case _:
+                raise KeyError(f"Wrong action {action}")
 
         state = self.currentState
         newState = RobotEnvironment._getState()

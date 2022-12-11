@@ -1,7 +1,6 @@
 from easygopigo3 import EasyGoPiGo3
 from flask import Flask, request
 from flask.wrappers import Response
-import json
 import numpy as np
 import picamera
 import picamera.array
@@ -82,7 +81,7 @@ class RobotService:
 
     def sendLightColorReading(self):
         rawColors = self.lightColorSensor.safe_raw_colors()
-        resp = compress_nparr(np.asarray(rawColors))
+        resp, _, _ = compress_nparr(np.asarray(rawColors))
 
         return Response(response=resp, status=200)
 
@@ -127,7 +126,7 @@ class RobotService:
         for deg in range(180):
             self.servo.rotate_servo(deg)
             readings[deg, 0] = self.distanceSensor.read_range_continuous()
-            readings[360 - deg, 1:] = np.asarray(
+            readings[359 - deg, 1:] = np.asarray(
                 self.lightColorSensor.safe_raw_colors()
             )
 
@@ -135,7 +134,7 @@ class RobotService:
         for deg in range(180):
             self.servo.rotate_servo(deg)
             readings[180 + deg, 0] = self.distanceSensor.read_range_continuous()
-            readings[360 - deg, 1:] = np.asarray(
+            readings[359 - deg, 1:] = np.asarray(
                 self.lightColorSensor.safe_raw_colors()
             )
         resp, _, _ = compress_nparr(readings)

@@ -1,6 +1,7 @@
 from easygopigo3 import EasyGoPiGo3
 from flask import Flask, request
 from flask.wrappers import Response
+import json
 import numpy as np
 import picamera
 import picamera.array
@@ -78,7 +79,7 @@ class RobotService:
         r, g, b, a = self.lightColorSensor.safe_raw_colors()
         resp = {"R": r, "G": g, "B": b, "alpha": a}
 
-        return Response(response=resp, status=200)
+        return Response(response=json.dumps(resp), status=200)
 
     def rotateMast(self):
         if request.json is None:

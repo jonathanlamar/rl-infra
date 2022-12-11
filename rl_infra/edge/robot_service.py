@@ -1,8 +1,7 @@
-import time
-
 from easygopigo3 import EasyGoPiGo3
 from flask import Flask, request
 from flask.wrappers import Response
+import numpy as np
 import picamera
 import picamera.array
 
@@ -76,7 +75,8 @@ class RobotService:
         return Response(response=resp, status=200)
 
     def getLightColorReading(self):
-        resp = self.lightColorSensor.safe_raw_colors()
+        r, g, b, a = self.lightColorSensor.safe_raw_colors()
+        resp = {"R": r, "G": g, "B": b, "alpha": a}
 
         return Response(response=resp, status=200)
 
@@ -84,14 +84,14 @@ class RobotService:
         if request.json is None:
             return Response(response="Bad request format", status=400)
 
-        degrees = request.json["degrees"]
-        if degrees < 0 or degrees > 180:
+        heading = request.json["heading"]
+        if heading < 0 or heading > 180:
             return Response(response="Bad request value", status=400)
 
-        self.servo.rotate_servo(degrees)
+        self.servo.rotate_servo(heading)
 
         return Response(
-            response="Turning mast to {} degrees".format(degrees), status=200
+            response="Turning mast to {} degrees".format(heading), status=200
         )
 
     def move(self):
@@ -114,6 +114,17 @@ class RobotService:
             status = 400
 
         return Response(response=resp, status=status)
+
+    def mastSweepAndRecordDist(self):
+        self.distanceSensor.start_continuous()
+        distances = np.arange(181)
+        for deg in range(181):
+            self.servo.rotate_servo(deg)
+            distances[deg] = self.distanceSensor.read_range_continuous()
+
+        resp, _, _ = compress_nparr(distances)
+
+        Response(response=resp, status=200, mimetype="application/octet_stream")
 
 
 if __name__ == "__main__":

@@ -1,17 +1,19 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 
 from numpy import ndarray
 
 from ...types.environment import Action, Environment, State, Transition
-from .utils.robot_client import RobotClient
+from .utils.robot_client import RobotClient, RobotSensorReading, LightColorReading
 
 
 @dataclass
-class RobotState(State):
-    cameraImg: ndarray
-    distanceSensor: int
+class RobotState(State, RobotSensorReading):
+    image: ndarray
+    distanceSweep: ndarray
+    motionDetected: bool
+    lightColor: LightColorReading
 
 
 class RobotAction(Action, Enum):
@@ -77,5 +79,5 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
 
     @staticmethod
     def _getState() -> RobotState:
-        img, dist = RobotClient.getSensorReading()
-        return RobotState(cameraImg=img, distanceSensor=dist)
+        sensorReading = RobotClient.getSensorReading()
+        return RobotState(**asdict(sensorReading))

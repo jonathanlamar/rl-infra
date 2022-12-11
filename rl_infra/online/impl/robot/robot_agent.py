@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from numpy import pi
 import random
 
 from ...types.agent import Agent
@@ -34,13 +35,20 @@ class RobotAgent(ABC, Agent[RobotState, RobotAction]):
         action = self.nextAction
         self.lastAction = action
 
-        if state.distanceSensor >= 75:
+        if state.distanceSweep[90] >= 75:
             self.nextAction = RobotAction.MOVE_FORWARD
         elif self.lastAction != RobotAction.MOVE_BACKWARD:
             self.nextAction = RobotAction.MOVE_BACKWARD
         else:
-            self.nextAction = random.choice(
-                [RobotAction.TURN_LEFT, RobotAction.TURN_RIGHT]
-            )
+            # TODO: This could be greatly optimized
+            # int_0^{180}(pi/180)*(1/2)*r^2dx where x is measured in degrees
+            integrand = (state.distanceSweep**2) * (pi / 360)
+            rightQuadrantIntegral = integrand[:90].sum() / 90
+            leftQuadrantIntegral = integrand[90:].sum() / 90
+
+            if rightQuadrantIntegral > leftQuadrantIntegral:
+                self.nextAction = RobotAction.TURN_RIGHT
+            else:
+                self.nextAction = RobotAction.TURN_LEFT
 
         return action

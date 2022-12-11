@@ -8,3 +8,4 @@ MOVE_PATH = "/action"
 SERVER_HOST = "dex.local"
 SERVER_PORT = 8080
 SERVO_PATH = "/servo"
+SWEEP_PATH = "/sweep"

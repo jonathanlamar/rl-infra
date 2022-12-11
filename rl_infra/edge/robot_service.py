@@ -53,6 +53,11 @@ class RobotService:
             view_func=self.move,
             methods=["POST"],
         )
+        self.app.add_url_rule(
+            rule=config.SWEEP_PATH,
+            view_func=self.mastSweepAndRecordDist,
+            methods=["GET"],
+        )
 
     def run(self):
         self.app.run(host=config.SERVER_HOST, port=config.SERVER_PORT)
@@ -122,10 +127,9 @@ class RobotService:
         for deg in range(181):
             self.servo.rotate_servo(deg)
             distances[deg] = self.distanceSensor.read_range_continuous()
-
         resp, _, _ = compress_nparr(distances)
 
-        Response(response=resp, status=200, mimetype="application/octet_stream")
+        return Response(response=resp, status=200, mimetype="application/octet_stream")
 
 
 if __name__ == "__main__":

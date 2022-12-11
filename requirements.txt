@@ -2,5 +2,6 @@ flask
 numpy
 requests
 scipy
-torch
+pytorch
+torchvision
 pillow

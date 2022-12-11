@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import json
-from typing import Dict, Tuple
 
 from PIL import Image
 from numpy import ndarray, uint8
@@ -9,6 +8,7 @@ import requests
 from .....edge import config
 from .....edge.utils import uncompress_nparr
 
+
 @dataclass
 class LightColorReading:
     red: float
@@ -16,10 +16,11 @@ class LightColorReading:
     blue: float
     alpha: float
 
+
 @dataclass
 class RobotSensorReading:
     image: ndarray
-    distance: int
+    distanceSweep: ndarray
     motionDetected: bool
     lightColor: LightColorReading
 
@@ -43,13 +44,13 @@ class RobotClient:
     @staticmethod
     def getSensorReading() -> RobotSensorReading:
         img = RobotClient._getImage()
-        dist = RobotClient._getDistance()
+        distSweep = RobotClient._getDistanceSweep()
         motionDetected = RobotClient._getMotion()
         lightColor = RobotClient._getLightColorReading()
 
         return RobotSensorReading(
             image=img,
-            distance=dist,
+            distanceSweep=distSweep,
             motionDetected=motionDetected,
             lightColor=lightColor,
         )
@@ -90,6 +91,17 @@ class RobotClient:
             raise requests.HTTPError("Failed to get light and color reading")
 
         return LightColorReading(**lightColorResponse.json())
+
+    @staticmethod
+    def _getDistanceSweep() -> ndarray:
+        sweepResponse = requests.get(
+            url=RobotClient.url + config.SWEEP_PATH,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        if sweepResponse.status_code != 200:
+            raise requests.HTTPError("Failed to get distance sweep")
+
+        return uncompress_nparr(sweepResponse.content)
 
     @staticmethod
     def _rotateMast(heading: int):

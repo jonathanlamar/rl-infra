@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import json
-from typing import Tuple
+from typing import Dict, Tuple
 
 from PIL import Image
 from numpy import ndarray, uint8
@@ -9,13 +9,19 @@ import requests
 from .....edge import config
 from .....edge.utils import uncompress_nparr
 
+@dataclass
+class LightColorReading:
+    red: float
+    green: float
+    blue: float
+    alpha: float
 
 @dataclass
 class RobotSensorReading:
     image: ndarray
     distance: int
     motionDetected: bool
-    lightColor: Tuple[float, float, float, float]
+    lightColor: LightColorReading
 
 
 class RobotClient:
@@ -78,11 +84,12 @@ class RobotClient:
         return content == "True"
 
     @staticmethod
-    def _getLightColorReading() -> Tuple[float, float, float, float]:
+    def _getLightColorReading() -> LightColorReading:
         lightColorResponse = requests.get(url=RobotClient.url + config.LIGHT_COLOR_PATH)
         if lightColorResponse.status_code != 200:
             raise requests.HTTPError("Failed to get light and color reading")
-        return lightColorResponse.content
+
+        return LightColorReading(**lightColorResponse.json())
 
     @staticmethod
     def _rotateMast(heading: int):

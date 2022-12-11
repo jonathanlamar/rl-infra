@@ -77,7 +77,7 @@ class RobotService:
 
     def getLightColorReading(self):
         r, g, b, a = self.lightColorSensor.safe_raw_colors()
-        resp = {"R": r, "G": g, "B": b, "alpha": a}
+        resp = {"red": r, "green": g, "blue": b, "alpha": a}
 
         return Response(response=json.dumps(resp), status=200)
 

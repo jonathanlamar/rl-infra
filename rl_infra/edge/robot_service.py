@@ -29,27 +29,27 @@ class RobotService:
         )
         self.app.add_url_rule(
             rule=config.DIST_PATH,
-            view_func=self.sendCompressedImage,
+            view_func=self.sendDistanceReading,
             methods=["GET"],
         )
         self.app.add_url_rule(
             rule=config.MOTION_PATH,
-            view_func=self.sendCompressedImage,
+            view_func=self.sendMotionReading,
             methods=["GET"],
         )
         self.app.add_url_rule(
             rule=config.LIGHT_COLOR_PATH,
-            view_func=self.sendCompressedImage,
+            view_func=self.getLightColorReading,
             methods=["GET"],
         )
         self.app.add_url_rule(
             rule=config.SERVO_PATH,
-            view_func=self.sendCompressedImage,
+            view_func=self.rotateMast,
             methods=["POST"],
         )
         self.app.add_url_rule(
             rule=config.MOVE_PATH,
-            view_func=self.sendCompressedImage,
+            view_func=self.move,
             methods=["POST"],
         )
 

@@ -18,18 +18,19 @@ class TetrisPiece(int, Enum):
 
     @staticmethod
     def fromTetramino(tetramino: Tetramino) -> TetrisPiece:
-        if isinstance(tetramino, Ell):
-            return TetrisPiece.ELL
-        elif isinstance(tetramino, Eye):
-            return TetrisPiece.EYE
-        elif isinstance(tetramino, Ohh):
-            return TetrisPiece.OHH
-        elif isinstance(tetramino, Tee):
-            return TetrisPiece.TEE
-        elif isinstance(tetramino, Zee):
-            return TetrisPiece.ZEE
-        else:
-            raise KeyError(f"Unkown tetramino type {tetramino}")
+        match tetramino:
+            case Ell():
+                return TetrisPiece.ELL
+            case Eye():
+                return TetrisPiece.EYE
+            case Ohh():
+                return TetrisPiece.OHH
+            case Tee():
+                return TetrisPiece.TEE
+            case Zee():
+                return TetrisPiece.ZEE
+            case _:
+                raise KeyError(f"Unkown tetramino type {tetramino}")
 
 
 @dataclass

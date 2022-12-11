@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+from typing import Tuple
 
 from PIL import Image
 from numpy import ndarray, uint8
@@ -10,19 +11,11 @@ from .....edge.utils import uncompress_nparr
 
 
 @dataclass
-class LightColorReading:
-    red: float
-    green: float
-    blue: float
-    alpha: float
-
-
-@dataclass
 class RobotSensorReading:
     image: ndarray
     distanceSweep: ndarray
     motionDetected: bool
-    lightColor: LightColorReading
+    lightColorSweep: ndarray
 
 
 class RobotClient:
@@ -44,15 +37,14 @@ class RobotClient:
     @staticmethod
     def getSensorReading() -> RobotSensorReading:
         img = RobotClient._getImage()
-        distSweep = RobotClient._getDistanceSweep()
+        sensorSweep = RobotClient._getSensorSweep()
         motionDetected = RobotClient._getMotion()
-        lightColor = RobotClient._getLightColorReading()
 
         return RobotSensorReading(
             image=img,
-            distanceSweep=distSweep,
+            distanceSweep=sensorSweep[:, 0],
             motionDetected=motionDetected,
-            lightColor=lightColor,
+            lightColorSweep=sensorSweep[:, 1:],
         )
 
     @staticmethod
@@ -85,15 +77,19 @@ class RobotClient:
         return content == "True"
 
     @staticmethod
-    def _getLightColorReading() -> LightColorReading:
-        lightColorResponse = requests.get(url=RobotClient.url + config.LIGHT_COLOR_PATH)
+    def _getLightColorReading() -> Tuple[float, float, float, float]:
+        lightColorResponse = requests.get(
+            url=RobotClient.url + config.LIGHT_COLOR_PATH,
+            headers={"Content-Type": "application/octet-stream"},
+        )
         if lightColorResponse.status_code != 200:
             raise requests.HTTPError("Failed to get light and color reading")
 
-        return LightColorReading(**lightColorResponse.json())
+        data = uncompress_nparr(lightColorResponse.content)
+        return tuple(data)
 
     @staticmethod
-    def _getDistanceSweep() -> ndarray:
+    def _getSensorSweep() -> ndarray:
         sweepResponse = requests.get(
             url=RobotClient.url + config.SWEEP_PATH,
             headers={"Content-Type": "application/octet-stream"},

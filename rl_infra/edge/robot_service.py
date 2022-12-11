@@ -40,7 +40,7 @@ class RobotService:
         )
         self.app.add_url_rule(
             rule=config.LIGHT_COLOR_PATH,
-            view_func=self.getLightColorReading,
+            view_func=self.sendLightColorReading,
             methods=["GET"],
         )
         self.app.add_url_rule(
@@ -55,7 +55,7 @@ class RobotService:
         )
         self.app.add_url_rule(
             rule=config.SWEEP_PATH,
-            view_func=self.mastSweepAndRecordDist,
+            view_func=self.sendSensorMastSweep,
             methods=["GET"],
         )
 
@@ -80,11 +80,11 @@ class RobotService:
 
         return Response(response=resp, status=200)
 
-    def getLightColorReading(self):
-        r, g, b, a = self.lightColorSensor.safe_raw_colors()
-        resp = {"red": r, "green": g, "blue": b, "alpha": a}
+    def sendLightColorReading(self):
+        rawColors = self.lightColorSensor.safe_raw_colors()
+        resp = compress_nparr(np.asarray(rawColors))
 
-        return Response(response=json.dumps(resp), status=200)
+        return Response(response=resp, status=200)
 
     def rotateMast(self):
         if request.json is None:
@@ -121,13 +121,24 @@ class RobotService:
 
         return Response(response=resp, status=status)
 
-    def mastSweepAndRecordDist(self):
+    def sendSensorMastSweep(self):
         self.distanceSensor.start_continuous()
-        distances = np.arange(181)
-        for deg in range(181):
+        readings = np.zeros((360, 5))
+        for deg in range(180):
             self.servo.rotate_servo(deg)
-            distances[deg] = self.distanceSensor.read_range_continuous()
-        resp, _, _ = compress_nparr(distances)
+            readings[deg, 0] = self.distanceSensor.read_range_continuous()
+            readings[360 - deg, 1:] = np.asarray(
+                self.lightColorSensor.safe_raw_colors()
+            )
+
+        self.goPiGo.turn_degrees(180)
+        for deg in range(180):
+            self.servo.rotate_servo(deg)
+            readings[180 + deg, 0] = self.distanceSensor.read_range_continuous()
+            readings[360 - deg, 1:] = np.asarray(
+                self.lightColorSensor.safe_raw_colors()
+            )
+        resp, _, _ = compress_nparr(readings)
 
         return Response(response=resp, status=200, mimetype="application/octet_stream")
 

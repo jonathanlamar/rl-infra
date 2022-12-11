@@ -5,7 +5,7 @@ from enum import Enum
 from numpy import ndarray
 
 from ...types.environment import Action, Environment, State, Transition
-from .utils.robot_client import RobotClient, RobotSensorReading, LightColorReading
+from .utils.robot_client import RobotClient, RobotSensorReading
 
 
 @dataclass
@@ -13,7 +13,7 @@ class RobotState(State, RobotSensorReading):
     image: ndarray
     distanceSweep: ndarray
     motionDetected: bool
-    lightColor: LightColorReading
+    lightColorSensor: ndarray
 
 
 class RobotAction(Action, Enum):

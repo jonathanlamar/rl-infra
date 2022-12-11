@@ -69,9 +69,13 @@ class RobotClient:
     @staticmethod
     def _getMotion() -> bool:
         motionResponse = requests.get(url=RobotClient.url + config.MOTION_PATH)
+        content = motionResponse.content.decode("utf-8")
         if motionResponse.status_code != 200:
             raise requests.HTTPError("Failed to get motion reading")
-        return motionResponse.content == "True"
+        if content not in ["True", "False"]:
+            raise RuntimeError("Invalid response")
+
+        return content == "True"
 
     @staticmethod
     def _getLightColorReading() -> Tuple[float, float, float, float]:

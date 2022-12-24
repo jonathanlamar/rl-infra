@@ -1,5 +1,5 @@
 {
-  "include": ["src"],
+  "include": ["rl_infra"],
   "exclude": ["stubs"],
   "stubPath": "stubs/",
   "reportMissingModuleSource": false,

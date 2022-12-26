@@ -4,8 +4,13 @@ import glob
 import json
 import os
 
-from rl_infra.online.impl import RobotAgent, RobotEnvironment
-from rl_infra.online.utils import RobotClient
+from rl_infra.online.impl.robot import (
+    RobotAction,
+    RobotAgent,
+    RobotEnvironment,
+    RobotState,
+)
+from rl_infra.online.impl.robot.utils import RobotClient
 
 
 class CustomJsonEncoder(json.JSONEncoder):
@@ -14,14 +19,31 @@ class CustomJsonEncoder(json.JSONEncoder):
             return dataclasses.asdict(o)
         return super().default(o)
 
+
+class RobotEnvironmentImpl(RobotEnvironment):
+    def __init__(self) -> None:
+        super().__init__(moveStepSizeCm=50, turnStepSizeDeg=45)
+
+    def getReward(
+        self, oldState: RobotState, action: RobotAction, newState: RobotState
+    ) -> float:
+        return 1
+
+
+class RobotAgentImpl(RobotAgent):
+    def choosePolicyAction(self, state: RobotState) -> RobotAction:
+        return self.chooseExploreAction(state)
+
+
 files = glob.glob("data/*.jpg")
 files.append("data/history.json")
 for file in files:
     if os.path.exists(file):
         os.remove(file)
 
-env = RobotEnvironment(moveStepSizeCm=50, turnStepSizeDeg=45)
-agent = RobotAgent()
+
+env = RobotEnvironmentImpl()
+agent = RobotAgentImpl()
 actions = []
 states = []
 rewards = []

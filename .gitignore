@@ -15,4 +15,7 @@ data/*
 # due to using tox and pytest
 .tox
 .cache
+
+# Mac stuff
 .DS_Store
+.ipynb_checkpoints

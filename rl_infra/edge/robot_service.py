@@ -1,9 +1,9 @@
-from easygopigo3 import EasyGoPiGo3
-from flask import Flask, request
-from flask.wrappers import Response
 import numpy as np
 import picamera
 import picamera.array
+from easygopigo3 import EasyGoPiGo3
+from flask import Flask, request
+from flask.wrappers import Response
 
 from . import config
 from .utils import compress_nparr
@@ -95,9 +95,7 @@ class RobotService:
 
         self.servo.rotate_servo(heading)
 
-        return Response(
-            response="Turning mast to {} degrees".format(heading), status=200
-        )
+        return Response(response="Turning mast to {} degrees".format(heading), status=200)
 
     def move(self):
         if request.json is None:
@@ -126,17 +124,13 @@ class RobotService:
         for deg in range(180):
             self.servo.rotate_servo(deg)
             readings[deg, 0] = self.distanceSensor.read_range_continuous()
-            readings[359 - deg, 1:] = np.asarray(
-                self.lightColorSensor.safe_raw_colors()
-            )
+            readings[359 - deg, 1:] = np.asarray(self.lightColorSensor.safe_raw_colors())
 
         self.goPiGo.turn_degrees(180)
         for deg in range(180):
             self.servo.rotate_servo(deg)
             readings[180 + deg, 0] = self.distanceSensor.read_range_continuous()
-            readings[359 - deg, 1:] = np.asarray(
-                self.lightColorSensor.safe_raw_colors()
-            )
+            readings[359 - deg, 1:] = np.asarray(self.lightColorSensor.safe_raw_colors())
         resp, _, _ = compress_nparr(readings)
 
         return Response(response=resp, status=200, mimetype="application/octet_stream")

@@ -1,7 +1,7 @@
 import random
 
-from tetris.config import BOARD_SIZE
 import torch
+from tetris.config import BOARD_SIZE
 
 from ....offline.dqn import DeepQNetwork
 from ...types.agent import Agent

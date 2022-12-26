@@ -1,10 +1,10 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Tuple
 
-from PIL import Image
-from numpy import ndarray, uint8
 import requests
+from numpy import ndarray, uint8
+from PIL import Image
 
 from .....edge import config
 from .....edge.utils import uncompress_nparr

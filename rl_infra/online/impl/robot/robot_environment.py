@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 
 from numpy import ndarray
@@ -72,9 +72,7 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
         )
 
     @abstractmethod
-    def getReward(
-        self, oldState: RobotState, action: RobotAction, newState: RobotState
-    ) -> float:
+    def getReward(self, oldState: RobotState, action: RobotAction, newState: RobotState) -> float:
         ...
 
     @staticmethod

@@ -1,5 +1,5 @@
-from collections import deque
 import random
+from collections import deque
 from typing import Deque, List, TypeVar
 
 import torch

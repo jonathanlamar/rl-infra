@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
-from numpy import pi
 import random
+from abc import ABC, abstractmethod
+
+from numpy import pi
 
 from ...types.agent import Agent
 from .robot_environment import RobotAction, RobotState

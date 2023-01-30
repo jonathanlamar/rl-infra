@@ -40,15 +40,13 @@ class ModelDbEntry:
     onlinePerformance: EpochMetrics
 
     def valueExpr(self) -> str:
-        return f"""
-            VALUES(
-                '{self.modelType.value}',
-                '{self.modelTag}',
-                '{self.modelLocation}',
-                '{self.onlinePerformance.avgEpochLength}',
-                '{self.onlinePerformance.avgEpochScore}'
-            )
-        """
+        return f"""VALUES(
+            '{self.modelType.value}',
+            '{self.modelTag}',
+            '{self.modelLocation}',
+            '{self.onlinePerformance.avgEpochLength}',
+            '{self.onlinePerformance.avgEpochScore}'
+        )"""
 
     @staticmethod
     def fromDbRow(row: DbRow) -> ModelDbEntry:

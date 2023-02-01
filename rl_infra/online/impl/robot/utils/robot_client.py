@@ -12,10 +12,9 @@ from .....utils import uncompressNpArray
 
 
 class RobotSensorReading(SerializableDataClass):
-    image: NumpyArray[Literal["int64"]]
-    distanceSweep: NumpyArray[Literal["int64"]]
+    image: NumpyArray[Literal["int8"]]
+    distanceSweep: NumpyArray[Literal["int32"]]
     motionDetected: bool
-    lightColorSweep: NumpyArray[Literal["int64"]]
 
 
 class RobotClient:
@@ -42,9 +41,8 @@ class RobotClient:
 
         return RobotSensorReading(
             image=img,
-            distanceSweep=sensorSweep[:, 0],
+            distanceSweep=sensorSweep,
             motionDetected=motionDetected,
-            lightColorSweep=sensorSweep[:, 1:],
         )
 
     @staticmethod

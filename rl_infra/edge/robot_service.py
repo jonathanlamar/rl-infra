@@ -120,17 +120,15 @@ class RobotService:
 
     def sendSensorMastSweep(self):
         self.distanceSensor.start_continuous()
-        readings = np.zeros((360, 5))
+        readings = np.zeros(360, dtype=int)
         for deg in range(180):
             self.servo.rotate_servo(deg)
-            readings[deg, 0] = self.distanceSensor.read_range_continuous()
-            readings[359 - deg, 1:] = np.asarray(self.lightColorSensor.safe_raw_colors())
+            readings[deg] = self.distanceSensor.read_range_continuous()
 
         self.goPiGo.turn_degrees(180)
         for deg in range(180):
             self.servo.rotate_servo(deg)
-            readings[180 + deg, 0] = self.distanceSensor.read_range_continuous()
-            readings[359 - deg, 1:] = np.asarray(self.lightColorSensor.safe_raw_colors())
+            readings[180 + deg] = self.distanceSensor.read_range_continuous()
         resp = compressNpArray(readings)
 
         return jsonify(resp)

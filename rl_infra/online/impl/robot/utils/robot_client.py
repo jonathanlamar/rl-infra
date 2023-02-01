@@ -12,7 +12,7 @@ from .....utils import uncompressNpArray
 
 
 class RobotSensorReading(SerializableDataClass):
-    image: NumpyArray[Literal["int8"]]
+    image: NumpyArray[Literal["uint8"]]
     distanceSweep: NumpyArray[Literal["int32"]]
     motionDetected: bool
 

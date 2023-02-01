@@ -1,21 +1,27 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any, Generic, Type, TypeVar
 
 import numpy as np
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from pydantic.fields import ModelField
 from typing_extensions import Self
 
-from ..utils import SerializedNumpyArray, compress_nparr, uncompress_nparr
+from ..utils import compressNpArray, uncompressNpArray
 
 DType = TypeVar("DType")
 
 
-class NumpyArray(np.ndarray, Generic[DType]):
-    def __init__(self, arr: np.ndarray) -> None:
-        super().__init__()
+@dataclass
+class SerializedNumpyArray:
+    data: str
+    shape: tuple[int, ...]
+    dtype: str
 
+
+class NumpyArray(np.ndarray, Generic[DType]):
     @classmethod
     def __get_validators__(cls: Type[Self]):
         yield cls.validators
@@ -29,8 +35,8 @@ class NumpyArray(np.ndarray, Generic[DType]):
         if isinstance(val, np.ndarray):
             res = val
         if isinstance(val, dict):
-            arr = SerializedNumpyArray(**val)
-            res = uncompress_nparr(arr)
+            arr = SerializedNumpyArray(**val)  # validate the contents of val
+            res = uncompressNpArray(asdict(arr))
         if res is None:
             raise TypeError("val is not a numpy array or a serialized numpy array")
         if expectedDtype != res.dtype:
@@ -44,4 +50,4 @@ class SerializableDataClass(BaseModel):
 
         allow_mutation = False
         use_enum_values = True
-        json_encoders = {np.ndarray: lambda arr: compress_nparr(arr)}
+        json_encoders = {np.ndarray: lambda arr: compressNpArray(arr)}

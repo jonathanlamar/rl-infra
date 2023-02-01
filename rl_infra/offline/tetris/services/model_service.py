@@ -89,7 +89,7 @@ class ModelService:
     def publishModel(self, model: DeepQNetwork, modelDbKey: ModelDbKey) -> None:
         r"""Push new model to DB. Determines location automatically. Epoch metrics are filled in with zeros."""
         modelLocation = self._generateLocation(modelDbKey)
-        epochMetrics = EpochMetrics(0, 0.0, 0.0)
+        epochMetrics = EpochMetrics(numEpochsTrained=0, avgEpochLength=0.0, avgEpochScore=0.0)
 
         torch.save(model.state_dict(), modelLocation)
         entry = ModelDbEntry(modelDbKey=modelDbKey, modelLocation=modelLocation, onlinePerformance=epochMetrics)

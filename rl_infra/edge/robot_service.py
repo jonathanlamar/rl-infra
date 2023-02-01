@@ -6,7 +6,7 @@ from flask import Flask, jsonify, request
 from flask.wrappers import Response
 
 from . import config
-from ..utils import compress_nparr
+from ..utils import compressNpArray
 
 
 class RobotService:
@@ -65,7 +65,7 @@ class RobotService:
         with picamera.array.PiRGBArray(self.camera) as output:
             self.camera.capture(output, "rgb")
             rgbArray = output.array
-        resp = compress_nparr(rgbArray)
+        resp = compressNpArray(rgbArray)
 
         return jsonify(resp)
 
@@ -81,7 +81,7 @@ class RobotService:
 
     def sendLightColorReading(self):
         rawColors = self.lightColorSensor.safe_raw_colors()
-        resp = compress_nparr(np.asarray(rawColors))
+        resp = compressNpArray(np.asarray(rawColors))
 
         return jsonify(resp)
 
@@ -131,7 +131,7 @@ class RobotService:
             self.servo.rotate_servo(deg)
             readings[180 + deg, 0] = self.distanceSensor.read_range_continuous()
             readings[359 - deg, 1:] = np.asarray(self.lightColorSensor.safe_raw_colors())
-        resp = compress_nparr(readings)
+        resp = compressNpArray(readings)
 
         return jsonify(resp)
 

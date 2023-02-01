@@ -1,14 +1,14 @@
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Literal, Tuple
 
 import requests
 from numpy import ndarray, uint8
 from PIL import Image
 
-from .....base_types import NumpyArray, SerializableDataClass
+from .....base_types import NumpyArray, SerializableDataClass, SerializedNumpyArray
 from .....edge import config
-from .....utils import SerializedNumpyArray, uncompress_nparr
+from .....utils import uncompressNpArray
 
 
 @dataclass
@@ -57,7 +57,8 @@ class RobotClient:
         if imgResponse.status_code != 200:
             raise requests.HTTPError("Failed to get image")
 
-        return uncompress_nparr(SerializedNumpyArray(**imgResponse.json()))
+        # Construct and deconstruct to validate contents of imgResponse
+        return uncompressNpArray(asdict(SerializedNumpyArray(**imgResponse.json())))
 
     @staticmethod
     def _getDistance() -> int:
@@ -86,7 +87,8 @@ class RobotClient:
         if lightColorResponse.status_code != 200:
             raise requests.HTTPError("Failed to get light and color reading")
 
-        data = uncompress_nparr(SerializedNumpyArray(**lightColorResponse.json()))
+        # Construct and deconstruct to validate contents of lightColorResponse
+        data = uncompressNpArray(asdict(SerializedNumpyArray(**lightColorResponse.json())))
         return tuple(data)
 
     @staticmethod
@@ -98,7 +100,8 @@ class RobotClient:
         if sweepResponse.status_code != 200:
             raise requests.HTTPError("Failed to get distance sweep")
 
-        return uncompress_nparr(SerializedNumpyArray(*sweepResponse.json()))
+        # Construct and deconstruct to validate contents of lightColorResponse
+        return uncompressNpArray(asdict(SerializedNumpyArray(**sweepResponse.json())))
 
     @staticmethod
     def _rotateMast(heading: int):

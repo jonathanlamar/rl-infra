@@ -1,19 +1,19 @@
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from enum import Enum
+from typing import Literal
 
-from numpy import ndarray
-
+from ....base_types import NumpyArray, SerializableDataClass
 from ...types.environment import Action, Environment, State, Transition
 from .utils.robot_client import RobotClient, RobotSensorReading
 
 
 @dataclass
-class RobotState(State, RobotSensorReading):
-    image: ndarray
-    distanceSweep: ndarray
+class RobotState(State, RobotSensorReading, SerializableDataClass):
+    image: NumpyArray[Literal["int64"]]
+    distanceSweep: NumpyArray[Literal["int64"]]
     motionDetected: bool
-    lightColorSensor: ndarray
+    lightColorSensor: NumpyArray[Literal["int64"]]
 
 
 class RobotAction(Action, Enum):
@@ -24,8 +24,7 @@ class RobotAction(Action, Enum):
     DO_NOTHING = "DO_NOTHING"
 
 
-@dataclass
-class RobotTransition(Transition[RobotState, RobotAction]):
+class RobotTransition(Transition[RobotState, RobotAction], SerializableDataClass):
     state: RobotState
     action: RobotAction
     newState: RobotState

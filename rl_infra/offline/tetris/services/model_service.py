@@ -1,60 +1,53 @@
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass
 from enum import Enum
 from types import TracebackType
 from typing import Optional, Tuple, Type
 
 import torch
 
+from ....base_types import SerializableDataClass
 from ...tetris.models.dqn import DeepQNetwork
 
 
-@dataclass
 class ModelType(str, Enum):
     ACTOR = "ACTOR"
     CRITIC = "CRITIC"
 
 
-@dataclass
-class EpochMetrics:
+ModelDbRow = Tuple[str, str, str, int, float, float]
+
+
+class EpochMetrics(SerializableDataClass):
+    numEpochsTrained: int
     avgEpochLength: float
     avgEpochScore: float
 
     def avgWith(self, other: EpochMetrics) -> EpochMetrics:
         return EpochMetrics(
+            numEpochsTrained=self.numEpochsTrained + other.numEpochsTrained,
             avgEpochLength=(self.avgEpochLength + other.avgEpochLength) / 2.0,
             avgEpochScore=(self.avgEpochScore + other.avgEpochScore) / 2.0,
         )
 
 
-DbRow = Tuple[str, str, str, float, float]
-
-
-@dataclass
-class ModelDbEntry:
+class ModelDbKey(SerializableDataClass):
     modelType: ModelType
     modelTag: str
+
+
+class ModelDbEntry(SerializableDataClass):
+    modelDbKey: ModelDbKey
     modelLocation: str
     onlinePerformance: EpochMetrics
 
-    def valueExpr(self) -> str:
-        return f"""VALUES(
-            '{self.modelType.value}',
-            '{self.modelTag}',
-            '{self.modelLocation}',
-            '{self.onlinePerformance.avgEpochLength}',
-            '{self.onlinePerformance.avgEpochScore}'
-        )"""
-
     @staticmethod
-    def fromDbRow(row: DbRow) -> ModelDbEntry:
+    def fromDbRow(row: ModelDbRow) -> ModelDbEntry:
         return ModelDbEntry(
-            modelType=ModelType[row[0]],
-            modelTag=row[1],
+            modelDbKey=ModelDbKey(modelType=ModelType[row[0]], modelTag=row[1]),
             modelLocation=row[2],
-            onlinePerformance=EpochMetrics(avgEpochLength=row[3], avgEpochScore=row[4]),
+            onlinePerformance=EpochMetrics(numEpochsTrained=row[3], avgEpochLength=row[4], avgEpochScore=row[5]),
         )
 
 
@@ -79,6 +72,7 @@ class ModelService:
                 model_type TEXT,
                 model_tag TEXT,
                 model_location TEXT,
+                num_epochs_trained INTEGER,
                 avg_epoch_length REAL,
                 avg_epoch_score REAL,
                 PRIMARY KEY(model_type, model_tag)
@@ -92,25 +86,27 @@ class ModelService:
         self.modelDb.commit()
         self.modelDb.close()
 
-    def publishModel(self, model: DeepQNetwork, modelType: ModelType, modelTag: str) -> None:
+    def publishModel(self, model: DeepQNetwork, modelDbKey: ModelDbKey) -> None:
         r"""Push new model to DB. Determines location automatically. Epoch metrics are filled in with zeros."""
-        modelLocation = self._generateLocation(modelTag, modelType)
-        epochMetrics = EpochMetrics(0.0, 0.0)
+        modelLocation = self._generateLocation(modelDbKey)
+        epochMetrics = EpochMetrics(0, 0.0, 0.0)
 
         torch.save(model.state_dict(), modelLocation)
-        entry = ModelDbEntry(modelType, modelTag, modelLocation, epochMetrics)
+        entry = ModelDbEntry(modelDbKey=modelDbKey, modelLocation=modelLocation, onlinePerformance=epochMetrics)
         self._upsert(entry)
-        match modelType:
+        match modelDbKey.modelType:
             case ModelType.ACTOR:
                 self.latestActorModelEntry = entry
             case ModelType.CRITIC:
                 self.latestCriticModelEntry = entry
 
-    def updateModelMetrics(self, modelType: ModelType, modelTag: str, metrics: EpochMetrics) -> None:
+    def updateModelMetrics(self, modelDbKey: ModelDbKey, metrics: EpochMetrics) -> None:
         r"""Push updated metrics to DB. Determines location automatically."""
-        existingEntry = self._fetchEntry(modelType, modelTag)
+        existingEntry = self._fetchEntry(modelDbKey)
         newMetrics = existingEntry.onlinePerformance.avgWith(metrics)
-        entry = ModelDbEntry(modelType, modelTag, existingEntry.modelLocation, newMetrics)
+        entry = ModelDbEntry(
+            modelDbKey=modelDbKey, modelLocation=existingEntry.modelLocation, onlinePerformance=newMetrics
+        )
         self._upsert(entry)
 
     def getLatestModel(self, modelType: ModelType) -> DeepQNetwork:
@@ -127,13 +123,16 @@ class ModelService:
 
         return torch.load(entry.modelLocation)
 
-    def _fetchEntry(self, modelType: ModelType, modelTag: str) -> ModelDbEntry:
+    def _fetchEntry(self, modelDbKey: ModelDbKey) -> ModelDbEntry:
         res = self.modelDb.execute(
-            f"""SELECT * FROM models WHERE model_type = '{modelType.value}' AND model_tag = '{modelTag}';"""
+            f"""SELECT * FROM models
+            WHERE model_type = '{modelDbKey.modelType.value}' AND model_tag = '{modelDbKey.modelTag}';"""
         ).fetchone()
 
         if res is None:
-            raise RuntimeError(f"No entry found for model_type = {modelType} and model_tag = {modelTag}")
+            raise RuntimeError(
+                f"No entry found for model_type = {modelDbKey.modelType} and model_tag = {modelDbKey.modelTag}"
+            )
 
         return ModelDbEntry.fromDbRow(res)
 
@@ -143,15 +142,24 @@ class ModelService:
                 model_type,
                 model_tag,
                 model_location,
+                num_epochs_trained,
                 avg_epoch_length,
                 avg_epoch_score
-            ) {entry.valueExpr()}
+            ) VALUES(
+                '{entry.modelDbKey.modelType.value}',
+                '{entry.modelDbKey.modelTag}',
+                '{entry.modelLocation}',
+                '{entry.onlinePerformance.numEpochsTrained}',
+                '{entry.onlinePerformance.avgEpochLength}',
+                '{entry.onlinePerformance.avgEpochScore}'
+            )
             ON CONFLICT(model_type, model_tag)
             DO UPDATE SET
                 model_location=excluded.model_location,
+                num_epochs_trained=excluded.num_epochs_trained,
                 avg_epoch_length=excluded.avg_epoch_length,
                 avg_epoch_score=excluded.avg_epoch_score;"""
         )
 
-    def _generateLocation(self, modelTag: str, modelType: ModelType) -> str:
-        return f"{self.rootPath}/{modelType}/{modelTag}/model.pt"
+    def _generateLocation(self, modelDbKey: ModelDbKey) -> str:
+        return f"{self.rootPath}/{modelDbKey.modelType}/{modelDbKey.modelTag}/model.pt"

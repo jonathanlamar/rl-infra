@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Literal
 
-from numpy import ndarray
 from tetris.game import Ell, Eye, GameState, KeyPress, Ohh, Tee, Zee
 from tetris.utils import Tetramino
 
+from ....base_types import NumpyArray, SerializableDataClass
 from ...types.environment import Action, Environment, State, Transition
 
 
@@ -35,8 +36,8 @@ class TetrisPiece(int, Enum):
 
 
 @dataclass
-class TetrisState(State):
-    board: ndarray
+class TetrisState(State, SerializableDataClass):
+    board: NumpyArray[Literal["int64"]]
     score: int
     currentPiece: TetrisPiece
     nextPiece: TetrisPiece
@@ -59,20 +60,21 @@ class TetrisAction(Action, Enum):
     NONE = "NONE"
 
     def toKeyPress(self) -> KeyPress:
-        if self == TetrisAction.UP:
-            return KeyPress.UP
-        elif self == TetrisAction.DOWN:
-            return KeyPress.DOWN
-        elif self == TetrisAction.LEFT:
-            return KeyPress.LEFT
-        elif self == TetrisAction.RIGHT:
-            return KeyPress.RIGHT
-        else:  # self == TetrisAction.NONE:
-            return KeyPress.NONE
+        match self:
+            case TetrisAction.UP:
+                return KeyPress.UP
+            case TetrisAction.DOWN:
+                return KeyPress.DOWN
+            case TetrisAction.LEFT:
+                return KeyPress.LEFT
+            case TetrisAction.RIGHT:
+                return KeyPress.RIGHT
+            case _:
+                return KeyPress.NONE
 
 
 @dataclass
-class TetrisTransition(Transition[TetrisState, TetrisAction]):
+class TetrisTransition(Transition[TetrisState, TetrisAction], SerializableDataClass):
     state: TetrisState
     action: TetrisAction
     newState: TetrisState
@@ -95,9 +97,9 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction]):
         self.currentState = TetrisState.fromGameState(self.gameState)
         reward = self.getReward(oldState, action, self.currentState)
 
-        return TetrisTransition(oldState, action, self.currentState, reward, isTerminal)
+        return TetrisTransition(
+            state=oldState, action=action, newState=self.currentState, reward=reward, isTerminal=isTerminal
+        )
 
-    def getReward(
-        self, oldState: TetrisState, action: TetrisAction, newState: TetrisState
-    ) -> float:
+    def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:
         return newState.score - oldState.score

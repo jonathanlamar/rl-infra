@@ -2,11 +2,11 @@ import numpy as np
 import picamera
 import picamera.array
 from easygopigo3 import EasyGoPiGo3
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask.wrappers import Response
 
 from . import config
-from .utils import compress_nparr
+from ..utils import compress_nparr
 
 
 class RobotService:
@@ -65,9 +65,9 @@ class RobotService:
         with picamera.array.PiRGBArray(self.camera) as output:
             self.camera.capture(output, "rgb")
             rgbArray = output.array
-        resp, _, _ = compress_nparr(rgbArray)
+        resp = compress_nparr(rgbArray)
 
-        return Response(response=resp, status=200, mimetype="application/octet_stream")
+        return jsonify(resp)
 
     def sendDistanceReading(self):
         resp = str(self.distanceSensor.read_mm())
@@ -81,9 +81,9 @@ class RobotService:
 
     def sendLightColorReading(self):
         rawColors = self.lightColorSensor.safe_raw_colors()
-        resp, _, _ = compress_nparr(np.asarray(rawColors))
+        resp = compress_nparr(np.asarray(rawColors))
 
-        return Response(response=resp, status=200)
+        return jsonify(resp)
 
     def rotateMast(self):
         if request.json is None:
@@ -131,9 +131,9 @@ class RobotService:
             self.servo.rotate_servo(deg)
             readings[180 + deg, 0] = self.distanceSensor.read_range_continuous()
             readings[359 - deg, 1:] = np.asarray(self.lightColorSensor.safe_raw_colors())
-        resp, _, _ = compress_nparr(readings)
+        resp = compress_nparr(readings)
 
-        return Response(response=resp, status=200, mimetype="application/octet_stream")
+        return jsonify(resp)
 
 
 if __name__ == "__main__":

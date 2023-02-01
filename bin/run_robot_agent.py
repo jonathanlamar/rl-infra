@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import dataclasses
 import glob
 import json
 import os
 
+from rl_infra.offline.utils.utils import DataclassJSONEncoder
 from rl_infra.online.impl.robot import (
     RobotAction,
     RobotAgent,
@@ -13,20 +13,11 @@ from rl_infra.online.impl.robot import (
 from rl_infra.online.impl.robot.utils import RobotClient
 
 
-class CustomJsonEncoder(json.JSONEncoder):
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
-
-
 class RobotEnvironmentImpl(RobotEnvironment):
     def __init__(self) -> None:
         super().__init__(moveStepSizeCm=50, turnStepSizeDeg=45)
 
-    def getReward(
-        self, oldState: RobotState, action: RobotAction, newState: RobotState
-    ) -> float:
+    def getReward(self, oldState: RobotState, action: RobotAction, newState: RobotState) -> float:
         return 1
 
 
@@ -50,9 +41,7 @@ rewards = []
 
 for step in range(100):
     action = agent.chooseAction(env.currentState)
-    print(
-        f"Current distance reading {env.currentState.distanceSensor}.\nChose action {action}"
-    )
+    print(f"Current distance reading {env.currentState.distanceSensor}.\nChose action {action}")
     actions.append(action)
     outcome = env.step(action)
     rewards.append(outcome.reward)
@@ -62,4 +51,4 @@ for step in range(100):
 
 history = {"actions": actions, "states": states, "rewards": rewards}
 with open("data/history.json", "w") as f:
-    json.dump(history, f, cls=CustomJsonEncoder)
+    json.dump(history, f, cls=DataclassJSONEncoder)

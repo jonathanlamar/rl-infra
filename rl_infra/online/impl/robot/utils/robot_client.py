@@ -1,21 +1,22 @@
 import json
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Literal, Tuple
 
 import requests
 from numpy import ndarray, uint8
 from PIL import Image
 
+from .....base_types import NumpyArray, SerializableDataClass
 from .....edge import config
-from .....edge.utils import uncompress_nparr
+from .....utils import SerializedNumpyArray, uncompress_nparr
 
 
 @dataclass
-class RobotSensorReading:
-    image: ndarray
-    distanceSweep: ndarray
+class RobotSensorReading(SerializableDataClass):
+    image: NumpyArray[Literal["int64"]]
+    distanceSweep: NumpyArray[Literal["int64"]]
     motionDetected: bool
-    lightColorSweep: ndarray
+    lightColorSweep: NumpyArray[Literal["int64"]]
 
 
 class RobotClient:
@@ -51,12 +52,12 @@ class RobotClient:
     def _getImage() -> ndarray:
         imgResponse = requests.get(
             url=RobotClient.url + config.IMG_PATH,
-            headers={"Content-Type": "application/octet-stream"},
+            headers={"Content-Type": "application/json"},
         )
         if imgResponse.status_code != 200:
             raise requests.HTTPError("Failed to get image")
 
-        return uncompress_nparr(imgResponse.content)
+        return uncompress_nparr(SerializedNumpyArray(**imgResponse.json()))
 
     @staticmethod
     def _getDistance() -> int:
@@ -80,24 +81,24 @@ class RobotClient:
     def _getLightColorReading() -> Tuple[float, float, float, float]:
         lightColorResponse = requests.get(
             url=RobotClient.url + config.LIGHT_COLOR_PATH,
-            headers={"Content-Type": "application/octet-stream"},
+            headers={"Content-Type": "application/json"},
         )
         if lightColorResponse.status_code != 200:
             raise requests.HTTPError("Failed to get light and color reading")
 
-        data = uncompress_nparr(lightColorResponse.content)
+        data = uncompress_nparr(SerializedNumpyArray(**lightColorResponse.json()))
         return tuple(data)
 
     @staticmethod
     def _getSensorSweep() -> ndarray:
         sweepResponse = requests.get(
             url=RobotClient.url + config.SWEEP_PATH,
-            headers={"Content-Type": "application/octet-stream"},
+            headers={"Content-Type": "application/json"},
         )
         if sweepResponse.status_code != 200:
             raise requests.HTTPError("Failed to get distance sweep")
 
-        return uncompress_nparr(sweepResponse.content)
+        return uncompress_nparr(SerializedNumpyArray(*sweepResponse.json()))
 
     @staticmethod
     def _rotateMast(heading: int):

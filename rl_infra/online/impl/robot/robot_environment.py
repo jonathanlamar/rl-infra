@@ -1,19 +1,13 @@
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Literal
 
-from ....base_types import NumpyArray, SerializableDataClass
 from ...types.environment import Action, Environment, State, Transition
 from .utils.robot_client import RobotClient, RobotSensorReading
 
 
-@dataclass
-class RobotState(State, RobotSensorReading, SerializableDataClass):
-    image: NumpyArray[Literal["int64"]]
-    distanceSweep: NumpyArray[Literal["int64"]]
-    motionDetected: bool
-    lightColorSensor: NumpyArray[Literal["int64"]]
+# Robot state contains no data beyond what is in the sensor reading
+class RobotState(State, RobotSensorReading):
+    pass
 
 
 class RobotAction(Action, Enum):
@@ -24,7 +18,7 @@ class RobotAction(Action, Enum):
     DO_NOTHING = "DO_NOTHING"
 
 
-class RobotTransition(Transition[RobotState, RobotAction], SerializableDataClass):
+class RobotTransition(Transition[RobotState, RobotAction]):
     state: RobotState
     action: RobotAction
     newState: RobotState
@@ -77,4 +71,4 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
     @staticmethod
     def _getState() -> RobotState:
         sensorReading = RobotClient.getSensorReading()
-        return RobotState(**asdict(sensorReading))
+        return RobotState(**sensorReading.dict())

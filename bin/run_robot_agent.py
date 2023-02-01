@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-import glob
-import json
-import os
-
-from rl_infra.offline.utils.utils import DataclassJSONEncoder
+from rl_infra.base_types.base_types import SerializableDataClass
 from rl_infra.online.impl.robot import (
     RobotAction,
     RobotAgent,
     RobotEnvironment,
     RobotState,
 )
-from rl_infra.online.impl.robot.utils import RobotClient
+from rl_infra.online.impl.robot.robot_environment import RobotTransition
 
 
 class RobotEnvironmentImpl(RobotEnvironment):
@@ -26,29 +22,21 @@ class RobotAgentImpl(RobotAgent):
         return self.chooseExploreAction(state)
 
 
-files = glob.glob("data/*.jpg")
-files.append("data/history.json")
-for file in files:
-    if os.path.exists(file):
-        os.remove(file)
-
-
 env = RobotEnvironmentImpl()
 agent = RobotAgentImpl()
-actions = []
-states = []
-rewards = []
+transitions = []
 
 for step in range(100):
     action = agent.chooseAction(env.currentState)
-    print(f"Current distance reading {env.currentState.distanceSensor}.\nChose action {action}")
-    actions.append(action)
     outcome = env.step(action)
-    rewards.append(outcome.reward)
-    imgPath = f"data/img{step:02}.jpg"
-    RobotClient.saveArrayAsJpeg(outcome.newState.cameraImg, filePath=imgPath)
-    states.append({"distance": env.currentState.distanceSensor, "imgPath": imgPath})
+    transitions.append(outcome)
 
-history = {"actions": actions, "states": states, "rewards": rewards}
+
+class RobotEpoch(SerializableDataClass):
+    transitions: list[RobotTransition]
+
+
+history = RobotEpoch(transitions=transitions)
+
 with open("data/history.json", "w") as f:
-    json.dump(history, f, cls=DataclassJSONEncoder)
+    f.write(history.json())

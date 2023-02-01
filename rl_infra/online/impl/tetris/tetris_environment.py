@@ -7,7 +7,7 @@ from typing import Literal
 from tetris.game import Ell, Eye, GameState, KeyPress, Ohh, Tee, Zee
 from tetris.utils import Tetramino
 
-from ....base_types import NumpyArray, SerializableDataClass
+from ....base_types import NumpyArray
 from ...types.environment import Action, Environment, State, Transition
 
 
@@ -36,7 +36,7 @@ class TetrisPiece(int, Enum):
 
 
 @dataclass
-class TetrisState(State, SerializableDataClass):
+class TetrisState(State):
     board: NumpyArray[Literal["int64"]]
     score: int
     currentPiece: TetrisPiece
@@ -73,8 +73,7 @@ class TetrisAction(Action, Enum):
                 return KeyPress.NONE
 
 
-@dataclass
-class TetrisTransition(Transition[TetrisState, TetrisAction], SerializableDataClass):
+class TetrisTransition(Transition[TetrisState, TetrisAction]):
     state: TetrisState
     action: TetrisAction
     newState: TetrisState

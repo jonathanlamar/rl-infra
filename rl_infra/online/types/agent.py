@@ -18,7 +18,7 @@ class Agent(Protocol[S, A]):
             return self.choosePolicyAction(state)
 
     def choosePolicyAction(self, state: S) -> A:
-        raise NotImplementedError
+        ...
 
     def chooseRandomAction(self) -> A:
-        raise NotImplementedError
+        ...

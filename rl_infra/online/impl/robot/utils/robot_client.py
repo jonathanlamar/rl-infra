@@ -1,5 +1,5 @@
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from typing import Literal, Tuple
 
 import requests
@@ -11,7 +11,6 @@ from .....edge import config
 from .....utils import uncompressNpArray
 
 
-@dataclass
 class RobotSensorReading(SerializableDataClass):
     image: NumpyArray[Literal["int64"]]
     distanceSweep: NumpyArray[Literal["int64"]]

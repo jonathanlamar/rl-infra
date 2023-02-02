@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from enum import Enum
-from types import TracebackType
-from typing import Optional, Tuple, Type
+from typing import Optional, Tuple
 
 import torch
 
@@ -54,18 +53,15 @@ class ModelDbEntry(SerializableDataClass):
 class ModelService:
     rootPath: str
     modelDb: sqlite3.Connection
-    letestActorModelEntry: Optional[ModelDbEntry]
-    letestCriticModelEntry: Optional[ModelDbEntry]
+    letestActorModelEntry: ModelDbEntry | None
+    letestCriticModelEntry: ModelDbEntry | None
 
     # TODO: Implement performance monitoring, versioning?
 
     def __init__(self, rootPath: str) -> None:
         self.rootPath = rootPath
-        self.modelDb = sqlite3.connect(f"{rootPath}/models.db")
         self.latestActorModelEntry = None
         self.latestCriticModelEntry = None
-
-    def __enter__(self) -> ModelService:
         self.modelDb = sqlite3.connect(f"{self.rootPath}/models.db")
         self.modelDb.execute(
             """CREATE TABLE IF NOT EXISTS models (
@@ -78,12 +74,9 @@ class ModelService:
                 PRIMARY KEY(model_type, model_tag)
             );"""
         )
-        return self
-
-    def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc: Optional[BaseException], traceback: Optional[TracebackType]
-    ) -> None:
         self.modelDb.commit()
+
+    def shutDown(self) -> None:
         self.modelDb.close()
 
     def publishModel(self, model: DeepQNetwork, modelDbKey: ModelDbKey) -> None:
@@ -160,6 +153,7 @@ class ModelService:
                 avg_epoch_length=excluded.avg_epoch_length,
                 avg_epoch_score=excluded.avg_epoch_score;"""
         )
+        self.modelDb.commit()
 
     def _generateLocation(self, modelDbKey: ModelDbKey) -> str:
         return f"{self.rootPath}/{modelDbKey.modelType}/{modelDbKey.modelTag}/model.pt"

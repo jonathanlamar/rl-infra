@@ -1,55 +1,41 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal, Type
 
-from tetris.game import Ell, Eye, GameState, KeyPress, Ohh, Tee, Zee
+from tetris.game import GameState, KeyPress
 from tetris.utils import Tetramino
 
 from rl_infra.base_types import NumpyArray
 from rl_infra.online.types.environment import Action, Environment, State, Transition
 
 
-class TetrisPiece(int, Enum):
-    ELL = 0
-    EYE = 1
-    OHH = 2
-    TEE = 3
-    ZEE = 4
+class TetrisPiece(str, Enum):
+    ELL = "L"
+    EYE = "I"
+    OHH = "O"
+    TEE = "T"
+    ZEE = "Z"
 
-    @staticmethod
-    def fromTetramino(tetramino: Tetramino) -> TetrisPiece:
-        match tetramino:
-            case Ell():
-                return TetrisPiece.ELL
-            case Eye():
-                return TetrisPiece.EYE
-            case Ohh():
-                return TetrisPiece.OHH
-            case Tee():
-                return TetrisPiece.TEE
-            case Zee():
-                return TetrisPiece.ZEE
-            case _:
-                raise KeyError(f"Unkown tetramino type {tetramino}")
+    @classmethod
+    def __get_validators__(cls: Type[TetrisPiece]):
+        yield cls.validators
+
+    @classmethod
+    def validators(cls: Type[TetrisPiece], val: Any) -> TetrisPiece:
+        if isinstance(val, Tetramino):
+            try:
+                TetrisPiece(val.letter)
+            except ValueError:
+                raise TypeError(f"Unkown tetramino type {val}")
+        raise TypeError(f"Invalid type for val: {type(val)}")
 
 
-@dataclass
 class TetrisState(State):
     board: NumpyArray[Literal["int64"]]
     score: int
-    currentPiece: TetrisPiece
+    activePiece: TetrisPiece
     nextPiece: TetrisPiece
-
-    @staticmethod
-    def fromGameState(gameState: GameState) -> TetrisState:
-        return TetrisState(
-            board=gameState.board,
-            score=gameState.score,
-            currentPiece=TetrisPiece.fromTetramino(gameState.activePiece),
-            nextPiece=TetrisPiece.fromTetramino(gameState.nextPiece),
-        )
 
 
 class TetrisAction(Action, Enum):
@@ -60,17 +46,7 @@ class TetrisAction(Action, Enum):
     NONE = "NONE"
 
     def toKeyPress(self) -> KeyPress:
-        match self:
-            case TetrisAction.UP:
-                return KeyPress.UP
-            case TetrisAction.DOWN:
-                return KeyPress.DOWN
-            case TetrisAction.LEFT:
-                return KeyPress.LEFT
-            case TetrisAction.RIGHT:
-                return KeyPress.RIGHT
-            case _:
-                return KeyPress.NONE
+        return KeyPress[self.value]
 
 
 class TetrisTransition(Transition[TetrisState, TetrisAction]):
@@ -87,13 +63,13 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction]):
 
     def __init__(self) -> None:
         self.gameState = GameState()
-        self.currentState = TetrisState.fromGameState(self.gameState)
+        self.currentState = TetrisState.from_orm(self.gameState)
 
     def step(self, action: TetrisAction) -> TetrisTransition:
         oldState = self.currentState
         self.gameState.update(action.toKeyPress())
         isTerminal = self.gameState.dead
-        self.currentState = TetrisState.fromGameState(self.gameState)
+        self.currentState = TetrisState.from_orm(self.gameState)
         reward = self.getReward(oldState, action, self.currentState)
 
         return TetrisTransition(
@@ -101,4 +77,4 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction]):
         )
 
     def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:
-        return newState.score - oldState.score
+        return 1 + newState.score - oldState.score

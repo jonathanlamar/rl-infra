@@ -6,6 +6,11 @@
   "pythonVersion": "3.10",
   "executionEnvironments": [
     {
+      "root": "rl_infra/base_types",
+      "pythonVersion": "3.10",
+      "pythonPlatform": "Linux"
+    },
+    {
       "root": "rl_infra/edge",
       "pythonVersion": "3.5",
       "pythonPlatform": "Linux"
@@ -18,6 +23,11 @@
     {
       "root": "rl_infra/online",
       "pythonVersion": "3.10",
+      "pythonPlatform": "Linux"
+    },
+    {
+      "root": "rl_infra/utils",
+      "pythonVersion": "3.5",
       "pythonPlatform": "Linux"
     }
   ],

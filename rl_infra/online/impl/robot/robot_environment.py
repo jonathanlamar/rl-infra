@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from rl_infra.online.impl.robot.utils.robot_client import RobotClient, RobotSensorReading
-from rl_infra.online.types.environment import Environment, State, Transition
+from rl_infra.online.impl.robot.robot_client import RobotClient, RobotSensorReading
+from rl_infra.online.types.environment import Action, Environment, State, Transition
 
 
 # Robot state contains no data beyond what is in the sensor reading

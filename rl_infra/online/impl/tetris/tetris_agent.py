@@ -3,9 +3,9 @@ import random
 import torch
 from tetris.config import BOARD_SIZE
 
-from ....offline.tetris.models import DeepQNetwork
-from ...types.agent import Agent
-from .tetris_environment import TetrisAction, TetrisState
+from rl_infra.offline.tetris.models.dqn import DeepQNetwork
+from rl_infra.online.impl.tetris.tetris_environment import TetrisAction, TetrisState
+from rl_infra.online.types.agent import Agent
 
 
 class TetrisAgent(Agent[TetrisState, TetrisAction]):

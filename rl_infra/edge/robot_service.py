@@ -5,7 +5,8 @@ from easygopigo3 import EasyGoPiGo3
 from flask import Flask, jsonify, request
 from flask.wrappers import Response
 
-from . import config
+from rl_infra.edge import config
+
 from ..utils import compressNpArray
 
 

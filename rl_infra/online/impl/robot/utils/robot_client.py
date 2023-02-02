@@ -6,9 +6,9 @@ import requests
 from numpy import ndarray, uint8
 from PIL import Image
 
-from .....base_types import NumpyArray, SerializableDataClass, SerializedNumpyArray
-from .....edge import config
-from .....utils import uncompressNpArray
+from rl_infra.base_types.base_types import NumpyArray, SerializableDataClass, SerializedNumpyArray
+from rl_infra.edge import config
+from rl_infra.utils.utils import uncompressNpArray
 
 
 class RobotSensorReading(SerializableDataClass):

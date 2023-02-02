@@ -7,8 +7,8 @@ from typing import Literal
 from tetris.game import Ell, Eye, GameState, KeyPress, Ohh, Tee, Zee
 from tetris.utils import Tetramino
 
-from ....base_types import NumpyArray
-from ...types.environment import Action, Environment, State, Transition
+from rl_infra.base_types.base_types import NumpyArray
+from rl_infra.online.types.environment import Action, Environment, State, Transition
 
 
 class TetrisPiece(int, Enum):

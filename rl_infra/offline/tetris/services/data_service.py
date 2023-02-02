@@ -1,8 +1,10 @@
 import random
 from collections import deque
-from typing import Deque, List, TypeVar
+from typing import Deque, List, Protocol, TypeVar
 
-from ....online.types.environment import Protocol, Transition
+from rl_infra.base_types.base_types import SerializableDataClass
+from rl_infra.online.impl.tetris.tetris_environment import TetrisTransition
+from rl_infra.online.types.environment import Transition
 
 T = TypeVar("T", bound=Transition, covariant=False, contravariant=False)
 
@@ -21,3 +23,7 @@ class ReplayMemory(Protocol[T]):
 
     def __len__(self) -> int:
         return len(self.memory)
+
+
+class DataDbEntry(SerializableDataClass):
+    transition: TetrisTransition

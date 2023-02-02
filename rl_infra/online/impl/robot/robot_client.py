@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict
-from typing import Literal, Tuple
+from typing import Literal
 
 import requests
 from numpy import ndarray, uint8
@@ -76,7 +76,7 @@ class RobotClient:
         return content == "True"
 
     @staticmethod
-    def _getLightColorReading() -> Tuple[float, float, float, float]:
+    def _getLightColorReading() -> tuple[float, float, float, float]:
         lightColorResponse = requests.get(
             url=RobotClient.url + config.LIGHT_COLOR_PATH,
             headers={"Content-Type": "application/json"},

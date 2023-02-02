@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sqlite3
 from enum import Enum
-from typing import Optional, Tuple
 
 import torch
 
@@ -15,7 +14,7 @@ class ModelType(str, Enum):
     CRITIC = "CRITIC"
 
 
-ModelDbRow = Tuple[str, str, str, int, float, float]
+ModelDbRow = tuple[str, str, str, int, float, float]
 
 
 class EpochMetrics(SerializableDataClass):
@@ -43,6 +42,7 @@ class ModelDbEntry(SerializableDataClass):
 
     @staticmethod
     def fromDbRow(row: ModelDbRow) -> ModelDbEntry:
+        # TODO: This might be doable from pydantic builtins
         return ModelDbEntry(
             modelDbKey=ModelDbKey(modelType=ModelType[row[0]], modelTag=row[1]),
             modelLocation=row[2],
@@ -103,7 +103,7 @@ class ModelService:
         self._upsert(entry)
 
     def getLatestModel(self, modelType: ModelType) -> DeepQNetwork:
-        entry: Optional[ModelDbEntry]
+        entry: ModelDbEntry | None
         match modelType:
             case ModelType.ACTOR:
                 if self.latestActorModelEntry is None:

@@ -6,8 +6,7 @@ from flask import Flask, jsonify, request
 from flask.wrappers import Response
 
 from rl_infra.edge import config
-
-from ..utils import compressNpArray
+from rl_infra.utils import compressNpArray
 
 
 class RobotService:

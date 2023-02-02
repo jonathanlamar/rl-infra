@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Type
 
 import torch
 
-from rl_infra.base_types.base_types import SerializableDataClass
+from rl_infra.base_types import SerializableDataClass
 from rl_infra.offline.tetris.models.dqn import DeepQNetwork
 
 

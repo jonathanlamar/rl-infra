@@ -2,7 +2,7 @@ import random
 from collections import deque
 from typing import Deque, List, Protocol, TypeVar
 
-from rl_infra.base_types.base_types import SerializableDataClass
+from rl_infra.base_types import SerializableDataClass
 from rl_infra.online.impl.tetris.tetris_environment import TetrisTransition
 from rl_infra.online.types.environment import Transition
 

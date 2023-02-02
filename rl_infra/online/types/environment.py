@@ -4,8 +4,7 @@ from typing import Generic, Protocol, TypeVar
 from rl_infra.base_types import SerializableDataClass
 
 
-# States will vary quite a bit between implementations, so I am just using this
-# class as a type stub.
+# States will vary quite a bit between implementations, so I am just using this class as a type stub.
 class State(SerializableDataClass):
     pass
 

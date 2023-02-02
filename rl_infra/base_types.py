@@ -9,7 +9,7 @@ from pydantic.dataclasses import dataclass
 from pydantic.fields import ModelField
 from typing_extensions import Self
 
-from rl_infra.utils.utils import compressNpArray, uncompressNpArray
+from rl_infra.utils import compressNpArray, uncompressNpArray
 
 
 DType = TypeVar("DType")

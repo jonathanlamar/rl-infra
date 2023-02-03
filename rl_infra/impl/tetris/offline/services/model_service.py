@@ -8,9 +8,9 @@ import torch
 
 from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
-from rl_infra.impl.tetris.offline.services.data_service import SqliteConnection
 from rl_infra.impl.tetris.online.config import MODEL_ROOT_PATH
 from rl_infra.types.base_types import SerializableDataClass
+from rl_infra.types.offline.services import DbRow, SqliteConnection
 
 
 class ModelType(str, Enum):
@@ -18,7 +18,6 @@ class ModelType(str, Enum):
     CRITIC = "CRITIC"
 
 
-DbRow = tuple
 ModelDbRow = DbRow[str, str, str, int, float, float]
 
 

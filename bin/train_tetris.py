@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import torch
 
-from rl_infra.offline.tetris.services.data_service import DataDbEntry, DataService
-from rl_infra.offline.tetris.services.model_service import ModelDbKey, ModelService, ModelType
-from rl_infra.online.impl.tetris.config import MODEL_ROOT_PATH
-from rl_infra.online.impl.tetris.tetris_agent import TetrisAgent
-from rl_infra.online.impl.tetris.tetris_environment import TetrisEnvironment
+from rl_infra.impl.tetris.offline.services.data_service import DataDbEntry, DataService
+from rl_infra.impl.tetris.offline.services.model_service import ModelDbKey, ModelService, ModelType
+from rl_infra.impl.tetris.online.config import MODEL_ROOT_PATH
+from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
+from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
 
 dataService = DataService()
 modelService = ModelService()

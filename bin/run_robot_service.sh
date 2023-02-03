@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 -m rl_infra.edge.robot_service
+python3 -m rl_infra.impl.robot.edge.robot_service

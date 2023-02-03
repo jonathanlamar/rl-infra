@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 
 from numpy import pi
 
-from rl_infra.online.impl.robot.robot_environment import RobotAction, RobotState
-from rl_infra.online.types.agent import Agent
+from rl_infra.impl.robot.online.robot_environment import RobotAction, RobotState
+from rl_infra.types.agent import Agent
 
 
 class RobotAgent(ABC, Agent[RobotState, RobotAction]):

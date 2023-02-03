@@ -56,6 +56,7 @@ class ModelDbEntry(SerializableDataClass):
 
 class ModelService:
     dbPath: str
+    modelWeightsPathStub: str
     modelDb: sqlite3.Connection
 
     # TODO: Implement performance monitoring, versioning?
@@ -63,6 +64,7 @@ class ModelService:
     def __init__(self, rootPath: str | None = None) -> None:
         if rootPath is None:
             rootPath = DB_ROOT_PATH
+        self.modelWeightsPathStub = f"{rootPath}/models"
         self.dbPath = f"{rootPath}/model.db"
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
@@ -142,7 +144,7 @@ class ModelService:
             )
 
     def _generateLocation(self, modelDbKey: ModelDbKey) -> str:
-        directory = f"{self.rootPath}/models/{modelDbKey.modelType}/{modelDbKey.modelTag}"
+        directory = f"{self.modelWeightsPathStub}/{modelDbKey.modelType}/{modelDbKey.modelTag}"
         if not os.path.exists(directory):
             os.makedirs(directory)
         return f"{directory}/weights.pt"

@@ -6,11 +6,11 @@ from enum import Enum
 
 import torch
 
-from rl_infra.base_types import SerializableDataClass
-from rl_infra.offline.tetris.models.dqn import DeepQNetwork
-from rl_infra.offline.tetris.services.config import DB_ROOT_PATH
-from rl_infra.offline.tetris.services.data_service import SqliteConnection
-from rl_infra.online.impl.tetris.config import MODEL_ROOT_PATH
+from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
+from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
+from rl_infra.impl.tetris.offline.services.data_service import SqliteConnection
+from rl_infra.impl.tetris.online.config import MODEL_ROOT_PATH
+from rl_infra.types.base_types import SerializableDataClass
 
 
 class ModelType(str, Enum):

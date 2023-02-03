@@ -8,8 +8,8 @@ from pydantic.utils import GetterDict
 from tetris.game import GameState, KeyPress
 from tetris.utils import Tetramino
 
-from rl_infra.base_types import NumpyArray
-from rl_infra.online.types.environment import Action, Environment, State, Transition
+from rl_infra.types.base_types import NumpyArray
+from rl_infra.types.environment import Action, Environment, State, Transition
 
 
 class TetrisPiece(str, Enum):

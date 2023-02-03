@@ -5,10 +5,10 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Protocol, TypeVar
 
-from rl_infra.base_types import SerializableDataClass
-from rl_infra.offline.tetris.services.config import DB_ROOT_PATH
-from rl_infra.online.impl.tetris.tetris_environment import TetrisTransition
-from rl_infra.online.types.environment import Transition
+from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
+from rl_infra.impl.tetris.online.tetris_environment import TetrisTransition
+from rl_infra.types.base_types import SerializableDataClass
+from rl_infra.types.environment import Transition
 
 T = TypeVar("T", bound=Transition, covariant=False, contravariant=False)
 

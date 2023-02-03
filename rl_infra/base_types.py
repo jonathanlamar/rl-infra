@@ -11,7 +11,6 @@ from typing_extensions import Self
 
 from rl_infra.utils import compressNpArray, uncompressNpArray
 
-
 DType = TypeVar("DType")
 
 
@@ -45,10 +44,14 @@ class NumpyArray(np.ndarray, Generic[DType]):
         return res
 
 
-class SerializableDataClass(BaseModel):
-    class Config:
-        """pydantic config class"""
+class BasePydanticConfig:
+    """pydantic config class with shared settings for all instances (unless overridden)"""
 
-        allow_mutation = False
-        use_enum_values = True
-        json_encoders = {np.ndarray: lambda arr: compressNpArray(arr)}
+    allow_mutation = False
+    use_enum_values = True
+    json_encoders = {np.ndarray: lambda arr: compressNpArray(arr)}
+
+
+class SerializableDataClass(BaseModel):
+    class Config(BasePydanticConfig):
+        pass

@@ -6,23 +6,23 @@ from types import TracebackType
 from typing import Protocol, TypeVar
 
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
+from rl_infra.impl.tetris.offline.services.model_service import DbRow
 from rl_infra.impl.tetris.online.tetris_environment import TetrisTransition
 from rl_infra.types.base_types import SerializableDataClass
-from rl_infra.types.environment import Transition
 
-T = TypeVar("T", bound=Transition, covariant=False, contravariant=False)
+DbEntry = TypeVar("DbEntry", bound=SerializableDataClass, covariant=False, contravariant=False)
 
 
 # Not necessary for now, but I might do some abstraction once I get tetris running.
-class ReplayMemory(Protocol[T]):
-    def push(self, transition: T, epoch: int, move: int) -> None:
+class DataService(Protocol[DbEntry]):
+    def push(self, entries: list[DbEntry]) -> None:
         ...
 
-    def sample(self, batchSize: int) -> list[T]:
+    def sample(self, batchSize: int) -> list[DbEntry]:
         ...
 
 
-DataDbRow = tuple[str, int, int]
+DataDbRow = DbRow[str, int, int]
 
 
 class SqliteConnection(AbstractContextManager[sqlite3.Cursor]):
@@ -61,7 +61,7 @@ class DataDbEntry(SerializableDataClass):
         return DataDbEntry(transition=TetrisTransition.parse_raw(row[0]), epoch=row[1], move=row[2])
 
 
-class DataService(ReplayMemory[TetrisTransition]):
+class TetrisDataService(DataService[DataDbEntry]):
     dbPath: str
 
     def __init__(self, rootPath: str | None = None) -> None:

@@ -1,7 +1,8 @@
 flask
 numpy
+pillow
+pydantic
 requests
 scipy
-pytorch
+torch
 torchvision
-pillow

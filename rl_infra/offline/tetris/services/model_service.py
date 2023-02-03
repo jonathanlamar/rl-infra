@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from enum import Enum
 
@@ -7,6 +8,8 @@ import torch
 
 from rl_infra.base_types import SerializableDataClass
 from rl_infra.offline.tetris.models.dqn import DeepQNetwork
+from rl_infra.offline.tetris.services.config import DB_ROOT_PATH
+from rl_infra.online.impl.tetris.config import MODEL_ROOT_PATH
 
 
 class ModelType(str, Enum):
@@ -53,16 +56,14 @@ class ModelDbEntry(SerializableDataClass):
 class ModelService:
     rootPath: str
     modelDb: sqlite3.Connection
-    letestActorModelEntry: ModelDbEntry | None
-    letestCriticModelEntry: ModelDbEntry | None
 
     # TODO: Implement performance monitoring, versioning?
 
-    def __init__(self, rootPath: str) -> None:
+    def __init__(self, rootPath: str | None = None) -> None:
+        if rootPath is None:
+            rootPath = DB_ROOT_PATH
         self.rootPath = rootPath
-        self.latestActorModelEntry = None
-        self.latestCriticModelEntry = None
-        self.modelDb = sqlite3.connect(f"{self.rootPath}/models.db")
+        self.modelDb = sqlite3.connect(f"{self.rootPath}/model.db")
         self.modelDb.execute(
             """CREATE TABLE IF NOT EXISTS models (
                 model_type TEXT,
@@ -87,11 +88,6 @@ class ModelService:
         torch.save(model.state_dict(), modelLocation)
         entry = ModelDbEntry(modelDbKey=modelDbKey, modelLocation=modelLocation, onlinePerformance=epochMetrics)
         self._upsert(entry)
-        match modelDbKey.modelType:
-            case ModelType.ACTOR:
-                self.latestActorModelEntry = entry
-            case ModelType.CRITIC:
-                self.latestCriticModelEntry = entry
 
     def updateModelMetrics(self, modelDbKey: ModelDbKey, metrics: EpochMetrics) -> None:
         r"""Push updated metrics to DB. Determines location automatically."""
@@ -102,19 +98,10 @@ class ModelService:
         )
         self._upsert(entry)
 
-    def getLatestModel(self, modelType: ModelType) -> DeepQNetwork:
-        entry: ModelDbEntry | None
-        match modelType:
-            case ModelType.ACTOR:
-                if self.latestActorModelEntry is None:
-                    raise RuntimeError("Latest actor model is undefined")
-                entry = self.latestActorModelEntry
-            case ModelType.CRITIC:
-                if self.latestCriticModelEntry is None:
-                    raise RuntimeError("Latest critic model is undefined")
-                entry = self.latestCriticModelEntry
-
-        return torch.load(entry.modelLocation)
+    def pushBestModel(self) -> None:
+        res = self.modelDb.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
+        entry = ModelDbEntry.fromDbRow(res)
+        os.system(f"cp -f {entry.modelLocation} {MODEL_ROOT_PATH}")
 
     def _fetchEntry(self, modelDbKey: ModelDbKey) -> ModelDbEntry:
         res = self.modelDb.execute(
@@ -139,7 +126,7 @@ class ModelService:
                 avg_epoch_length,
                 avg_epoch_score
             ) VALUES(
-                '{entry.modelDbKey.modelType.value}',
+                '{entry.modelDbKey.modelType}',
                 '{entry.modelDbKey.modelTag}',
                 '{entry.modelLocation}',
                 '{entry.onlinePerformance.numEpochsTrained}',
@@ -156,4 +143,7 @@ class ModelService:
         self.modelDb.commit()
 
     def _generateLocation(self, modelDbKey: ModelDbKey) -> str:
-        return f"{self.rootPath}/{modelDbKey.modelType}/{modelDbKey.modelTag}/model.pt"
+        directory = f"{self.rootPath}/models/{modelDbKey.modelType}/{modelDbKey.modelTag}"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        return f"{directory}/weights.pt"

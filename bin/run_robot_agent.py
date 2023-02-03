@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from rl_infra.base_types.base_types import SerializableDataClass
+from rl_infra.base_types import SerializableDataClass
 from rl_infra.online.impl.robot import (
     RobotAction,
     RobotAgent,

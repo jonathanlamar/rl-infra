@@ -1,21 +1,6 @@
 import sqlite3
 from contextlib import AbstractContextManager
 from types import TracebackType
-from typing import Protocol, TypeVar
-
-from rl_infra.types.base_types import SerializableDataClass
-
-DbRow = tuple
-
-DbEntry = TypeVar("DbEntry", bound=SerializableDataClass, covariant=False, contravariant=False)
-
-
-class DataService(Protocol[DbEntry]):
-    def push(self, entries: list[DbEntry]) -> None:
-        ...
-
-    def sample(self, batchSize: int) -> list[DbEntry]:
-        ...
 
 
 class SqliteConnection(AbstractContextManager[sqlite3.Cursor]):

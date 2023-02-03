@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import torch
 
-from rl_infra.impl.tetris.offline.services.data_service import DataDbEntry, TetrisDataService
+from rl_infra.impl.tetris.offline.services.data_service import TetrisDataDbEntry, TetrisDataService
 from rl_infra.impl.tetris.offline.services.model_service import ModelDbKey, TetrisModelService, ModelType
 from rl_infra.impl.tetris.online.config import MODEL_ROOT_PATH
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
@@ -22,7 +22,7 @@ for epoch in range(10):
     while not gameIsOver:
         action = agent.chooseAction(env.currentState)
         transition = env.step(action)
-        transitions.append(DataDbEntry(transition=transition, epoch=epoch, move=move))
+        transitions.append(TetrisDataDbEntry(transition=transition, epoch=epoch, move=move))
         move += 1
         gameIsOver = transition.isTerminal
     print(f"Epoch {epoch} done.  There were {move} total moves.  Saving data...")

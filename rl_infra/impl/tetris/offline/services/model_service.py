@@ -18,7 +18,8 @@ class ModelType(str, Enum):
     CRITIC = "CRITIC"
 
 
-ModelDbRow = tuple[str, str, str, int, float, float]
+DbRow = tuple
+ModelDbRow = DbRow[str, str, str, int, float, float]
 
 
 class EpochMetrics(SerializableDataClass):
@@ -54,7 +55,7 @@ class ModelDbEntry(SerializableDataClass):
         )
 
 
-class ModelService:
+class TetrisModelService:
     dbPath: str
     modelWeightsPathStub: str
     modelDb: sqlite3.Connection

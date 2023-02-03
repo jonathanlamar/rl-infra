@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import sqlite3
-from enum import Enum
 
 import torch
 
@@ -10,56 +8,43 @@ from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.config import MODEL_ROOT_PATH
 from rl_infra.types.base_types import SerializableDataClass
-from rl_infra.types.offline.services import DbRow, SqliteConnection
+from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, ModelType, SqliteConnection
 
 
-class ModelType(str, Enum):
-    ACTOR = "ACTOR"
-    CRITIC = "CRITIC"
-
-
-ModelDbRow = DbRow[str, str, str, int, float, float]
-
-
-class EpochMetrics(SerializableDataClass):
+class TetrisEpochMetrics(SerializableDataClass):
     numEpochsTrained: int
     avgEpochLength: float
     avgEpochScore: float
 
-    def avgWith(self, other: EpochMetrics) -> EpochMetrics:
-        return EpochMetrics(
+    def avgWith(self, other: TetrisEpochMetrics) -> TetrisEpochMetrics:
+        return TetrisEpochMetrics(
             numEpochsTrained=self.numEpochsTrained + other.numEpochsTrained,
             avgEpochLength=(self.avgEpochLength + other.avgEpochLength) / 2.0,
             avgEpochScore=(self.avgEpochScore + other.avgEpochScore) / 2.0,
         )
 
 
-class ModelDbKey(SerializableDataClass):
-    modelType: ModelType
-    modelTag: str
+TetrisModelDbRow = tuple[str, str, str, int, float, float]
 
 
-class ModelDbEntry(SerializableDataClass):
+class TetrisModelDbEntry(ModelDbEntry[TetrisEpochMetrics]):
     modelDbKey: ModelDbKey
     modelLocation: str
-    onlinePerformance: EpochMetrics
+    onlinePerformance: TetrisEpochMetrics
 
     @staticmethod
-    def fromDbRow(row: ModelDbRow) -> ModelDbEntry:
+    def fromDbRow(row: TetrisModelDbRow) -> TetrisModelDbEntry:
         # TODO: This might be doable from pydantic builtins
-        return ModelDbEntry(
+        return TetrisModelDbEntry(
             modelDbKey=ModelDbKey(modelType=ModelType[row[0]], modelTag=row[1]),
             modelLocation=row[2],
-            onlinePerformance=EpochMetrics(numEpochsTrained=row[3], avgEpochLength=row[4], avgEpochScore=row[5]),
+            onlinePerformance=TetrisEpochMetrics(numEpochsTrained=row[3], avgEpochLength=row[4], avgEpochScore=row[5]),
         )
 
 
-class TetrisModelService:
+class TetrisModelService(ModelService[DeepQNetwork, TetrisEpochMetrics]):
     dbPath: str
     modelWeightsPathStub: str
-    modelDb: sqlite3.Connection
-
-    # TODO: Implement performance monitoring, versioning?
 
     def __init__(self, rootPath: str | None = None) -> None:
         if rootPath is None:
@@ -81,29 +66,29 @@ class TetrisModelService:
 
     def publishModel(self, model: DeepQNetwork, modelDbKey: ModelDbKey) -> None:
         r"""Push new model to DB. Determines location automatically. Epoch metrics are filled in with zeros."""
-        modelLocation = self._generateLocation(modelDbKey)
-        epochMetrics = EpochMetrics(numEpochsTrained=0, avgEpochLength=0.0, avgEpochScore=0.0)
+        modelLocation = self._generateWeightsLocation(modelDbKey)
+        epochMetrics = TetrisEpochMetrics(numEpochsTrained=0, avgEpochLength=0.0, avgEpochScore=0.0)
 
         torch.save(model.state_dict(), modelLocation)
-        entry = ModelDbEntry(modelDbKey=modelDbKey, modelLocation=modelLocation, onlinePerformance=epochMetrics)
+        entry = TetrisModelDbEntry(modelDbKey=modelDbKey, modelLocation=modelLocation, onlinePerformance=epochMetrics)
         self._upsert(entry)
 
-    def updateModelMetrics(self, modelDbKey: ModelDbKey, metrics: EpochMetrics) -> None:
+    def updateModelMetrics(self, modelDbKey: ModelDbKey, metrics: TetrisEpochMetrics) -> None:
         r"""Push updated metrics to DB. Determines location automatically."""
         existingEntry = self._fetchEntry(modelDbKey)
         newMetrics = existingEntry.onlinePerformance.avgWith(metrics)
-        entry = ModelDbEntry(
+        entry = TetrisModelDbEntry(
             modelDbKey=modelDbKey, modelLocation=existingEntry.modelLocation, onlinePerformance=newMetrics
         )
         self._upsert(entry)
 
-    def pushBestModel(self) -> None:
+    def deployModel(self) -> None:
         with SqliteConnection(self.dbPath) as cur:
             res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
-        entry = ModelDbEntry.fromDbRow(res)
+        entry = TetrisModelDbEntry.fromDbRow(res)
         os.system(f"cp -f {entry.modelLocation} {MODEL_ROOT_PATH}")
 
-    def _fetchEntry(self, modelDbKey: ModelDbKey) -> ModelDbEntry:
+    def _fetchEntry(self, modelDbKey: ModelDbKey) -> TetrisModelDbEntry:
         with SqliteConnection(self.dbPath) as cur:
             res = cur.execute(
                 f"""SELECT * FROM models
@@ -115,9 +100,9 @@ class TetrisModelService:
                 f"No entry found for model_type = {modelDbKey.modelType} and model_tag = {modelDbKey.modelTag}"
             )
 
-        return ModelDbEntry.fromDbRow(res)
+        return TetrisModelDbEntry.fromDbRow(res)
 
-    def _upsert(self, entry: ModelDbEntry) -> None:
+    def _upsert(self, entry: TetrisModelDbEntry) -> None:
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 f"""INSERT INTO models (
@@ -142,9 +127,3 @@ class TetrisModelService:
                     avg_epoch_length=excluded.avg_epoch_length,
                     avg_epoch_score=excluded.avg_epoch_score;"""
             )
-
-    def _generateLocation(self, modelDbKey: ModelDbKey) -> str:
-        directory = f"{self.modelWeightsPathStub}/{modelDbKey.modelType}/{modelDbKey.modelTag}"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        return f"{directory}/weights.pt"

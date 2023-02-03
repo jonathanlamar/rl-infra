@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import AbstractContextManager
+from types import TracebackType
 from typing import Protocol, TypeVar
 
 from rl_infra.base_types import SerializableDataClass
@@ -23,6 +25,31 @@ class ReplayMemory(Protocol[T]):
 DataDbRow = tuple[str, int, int]
 
 
+class SqliteConnection(AbstractContextManager[sqlite3.Cursor]):
+    dbPath: str
+    connection: sqlite3.Connection | None
+
+    def __init__(self, dbPath: str) -> None:
+        self.dbPath = dbPath
+
+    def __enter__(self) -> sqlite3.Cursor:
+        self.connection = sqlite3.connect(self.dbPath)
+        return self.connection.cursor()
+
+    def __exit__(
+        self,
+        __exc_type: type[BaseException] | None,
+        __exc_value: BaseException | None,
+        __traceback: TracebackType | None,
+    ) -> bool | None:
+        if self.connection is not None:
+            self.connection.commit()
+            self.connection.close()
+        else:
+            raise TypeError("connection is None type")
+        return super().__exit__(__exc_type, __exc_value, __traceback)
+
+
 class DataDbEntry(SerializableDataClass):
     transition: TetrisTransition
     epoch: int
@@ -35,33 +62,29 @@ class DataDbEntry(SerializableDataClass):
 
 
 class DataService(ReplayMemory[TetrisTransition]):
-    rootPath: str
-    dataDb: sqlite3.Connection
+    dbPath: str
 
     def __init__(self, rootPath: str | None = None) -> None:
         if rootPath is None:
             rootPath = DB_ROOT_PATH
-        self.rootPath = rootPath
-        self.dataDb = sqlite3.connect(f"{rootPath}/data.db")
-        self.dataDb.execute(
-            """CREATE TABLE IF NOT EXISTS data (
-                transition TEXT,
-                epoch_num INTEGER,
-                move_num INTEGER
-            );"""
-        )
-        self.dataDb.commit()
-
-    def shutDown(self) -> None:
-        self.dataDb.close()
+        self.dbPath = f"{rootPath}/data.db"
+        with SqliteConnection(self.dbPath) as cur:
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS data (
+                    transition TEXT,
+                    epoch_num INTEGER,
+                    move_num INTEGER
+                );"""
+            )
 
     def push(self, entries: list[DataDbEntry]) -> None:
         query = "INSERT INTO data (transition, epoch_num, move_num) VALUES (?, ?, ?);"
         values = [(entry.transition.json(), entry.epoch, entry.move) for entry in entries]
-        self.dataDb.executemany(query, values)
-        self.dataDb.commit()
+        with SqliteConnection(self.dbPath) as cur:
+            cur.executemany(query, values)
 
     def sample(self, batchSize: int) -> list[DataDbEntry]:
         # FIXME: This needs to be a rencency-weighted random selection.
-        rows = self.dataDb.execute("SELECT * FROM data ORDER BY epoch_num DESC, move_num DESC").fetchmany(batchSize)
+        with SqliteConnection(self.dbPath) as cur:
+            rows = cur.execute("SELECT * FROM data ORDER BY epoch_num DESC, move_num DESC").fetchmany(batchSize)
         return [DataDbEntry.fromDbRow(row) for row in rows]

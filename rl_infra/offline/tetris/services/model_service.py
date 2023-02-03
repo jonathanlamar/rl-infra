@@ -9,6 +9,7 @@ import torch
 from rl_infra.base_types import SerializableDataClass
 from rl_infra.offline.tetris.models.dqn import DeepQNetwork
 from rl_infra.offline.tetris.services.config import DB_ROOT_PATH
+from rl_infra.offline.tetris.services.data_service import SqliteConnection
 from rl_infra.online.impl.tetris.config import MODEL_ROOT_PATH
 
 
@@ -54,7 +55,7 @@ class ModelDbEntry(SerializableDataClass):
 
 
 class ModelService:
-    rootPath: str
+    dbPath: str
     modelDb: sqlite3.Connection
 
     # TODO: Implement performance monitoring, versioning?
@@ -62,23 +63,19 @@ class ModelService:
     def __init__(self, rootPath: str | None = None) -> None:
         if rootPath is None:
             rootPath = DB_ROOT_PATH
-        self.rootPath = rootPath
-        self.modelDb = sqlite3.connect(f"{self.rootPath}/model.db")
-        self.modelDb.execute(
-            """CREATE TABLE IF NOT EXISTS models (
-                model_type TEXT,
-                model_tag TEXT,
-                model_location TEXT,
-                num_epochs_trained INTEGER,
-                avg_epoch_length REAL,
-                avg_epoch_score REAL,
-                PRIMARY KEY(model_type, model_tag)
-            );"""
-        )
-        self.modelDb.commit()
-
-    def shutDown(self) -> None:
-        self.modelDb.close()
+        self.dbPath = f"{rootPath}/model.db"
+        with SqliteConnection(self.dbPath) as cur:
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS models (
+                    model_type TEXT,
+                    model_tag TEXT,
+                    model_location TEXT,
+                    num_epochs_trained INTEGER,
+                    avg_epoch_length REAL,
+                    avg_epoch_score REAL,
+                    PRIMARY KEY(model_type, model_tag)
+                );"""
+            )
 
     def publishModel(self, model: DeepQNetwork, modelDbKey: ModelDbKey) -> None:
         r"""Push new model to DB. Determines location automatically. Epoch metrics are filled in with zeros."""
@@ -99,15 +96,17 @@ class ModelService:
         self._upsert(entry)
 
     def pushBestModel(self) -> None:
-        res = self.modelDb.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
+        with SqliteConnection(self.dbPath) as cur:
+            res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
         entry = ModelDbEntry.fromDbRow(res)
         os.system(f"cp -f {entry.modelLocation} {MODEL_ROOT_PATH}")
 
     def _fetchEntry(self, modelDbKey: ModelDbKey) -> ModelDbEntry:
-        res = self.modelDb.execute(
-            f"""SELECT * FROM models
-            WHERE model_type = '{modelDbKey.modelType.value}' AND model_tag = '{modelDbKey.modelTag}';"""
-        ).fetchone()
+        with SqliteConnection(self.dbPath) as cur:
+            res = cur.execute(
+                f"""SELECT * FROM models
+                WHERE model_type = '{modelDbKey.modelType.value}' AND model_tag = '{modelDbKey.modelTag}';"""
+            ).fetchone()
 
         if res is None:
             raise RuntimeError(
@@ -117,30 +116,30 @@ class ModelService:
         return ModelDbEntry.fromDbRow(res)
 
     def _upsert(self, entry: ModelDbEntry) -> None:
-        self.modelDb.execute(
-            f"""INSERT INTO models (
-                model_type,
-                model_tag,
-                model_location,
-                num_epochs_trained,
-                avg_epoch_length,
-                avg_epoch_score
-            ) VALUES(
-                '{entry.modelDbKey.modelType}',
-                '{entry.modelDbKey.modelTag}',
-                '{entry.modelLocation}',
-                '{entry.onlinePerformance.numEpochsTrained}',
-                '{entry.onlinePerformance.avgEpochLength}',
-                '{entry.onlinePerformance.avgEpochScore}'
+        with SqliteConnection(self.dbPath) as cur:
+            cur.execute(
+                f"""INSERT INTO models (
+                    model_type,
+                    model_tag,
+                    model_location,
+                    num_epochs_trained,
+                    avg_epoch_length,
+                    avg_epoch_score
+                ) VALUES(
+                    '{entry.modelDbKey.modelType}',
+                    '{entry.modelDbKey.modelTag}',
+                    '{entry.modelLocation}',
+                    '{entry.onlinePerformance.numEpochsTrained}',
+                    '{entry.onlinePerformance.avgEpochLength}',
+                    '{entry.onlinePerformance.avgEpochScore}'
+                )
+                ON CONFLICT(model_type, model_tag)
+                DO UPDATE SET
+                    model_location=excluded.model_location,
+                    num_epochs_trained=excluded.num_epochs_trained,
+                    avg_epoch_length=excluded.avg_epoch_length,
+                    avg_epoch_score=excluded.avg_epoch_score;"""
             )
-            ON CONFLICT(model_type, model_tag)
-            DO UPDATE SET
-                model_location=excluded.model_location,
-                num_epochs_trained=excluded.num_epochs_trained,
-                avg_epoch_length=excluded.avg_epoch_length,
-                avg_epoch_score=excluded.avg_epoch_score;"""
-        )
-        self.modelDb.commit()
 
     def _generateLocation(self, modelDbKey: ModelDbKey) -> str:
         directory = f"{self.rootPath}/models/{modelDbKey.modelType}/{modelDbKey.modelTag}"

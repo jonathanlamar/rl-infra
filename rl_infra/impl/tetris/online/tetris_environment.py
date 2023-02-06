@@ -12,9 +12,9 @@ from rl_infra.types.base_types import NumpyArray
 from rl_infra.types.online.environment import (
     Action,
     Environment,
-    Epoch,
+    EpochRecord,
     GameplayRecord,
-    ModelOnlineMetrics,
+    OnlineMetrics,
     State,
     Transition,
 )
@@ -82,11 +82,11 @@ class TetrisAction(Action, Enum):
         return KeyPress[self.value]
 
 
-class TetrisEpochMetrics(ModelOnlineMetrics):
+class TetrisOnlineMetrics(OnlineMetrics):
     avgEpochLength: float | None = None
     avgEpochScore: float | None = None
 
-    def updateWithNewValues(self, other: TetrisEpochMetrics) -> TetrisEpochMetrics:
+    def updateWithNewValues(self, other: TetrisOnlineMetrics) -> TetrisOnlineMetrics:
         """For each metric, compute average.  This results in an exponential recency weighted average."""
 
         def avgWithoutNone(num1: float | None, num2: float | None) -> float | None:
@@ -95,7 +95,7 @@ class TetrisEpochMetrics(ModelOnlineMetrics):
                 return None
             return sum(nums) / len(nums)
 
-        return TetrisEpochMetrics(
+        return TetrisOnlineMetrics(
             avgEpochLength=avgWithoutNone(self.avgEpochLength, other.avgEpochLength),
             avgEpochScore=avgWithoutNone(self.avgEpochScore, other.avgEpochScore),
         )
@@ -109,26 +109,30 @@ class TetrisTransition(Transition[TetrisState, TetrisAction]):
     isTerminal: bool
 
 
-class TetrisEpoch(Epoch[TetrisState, TetrisAction, TetrisTransition, TetrisEpochMetrics]):
+class TetrisEpochRecord(EpochRecord[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
     epochNumber: int
     moves: list[TetrisTransition]
 
-    def computeOnlineMetrics(self) -> TetrisEpochMetrics:
+    def computeOnlineMetrics(self) -> TetrisOnlineMetrics:
         finalScore = max([move.newState.score for move in self.moves])
-        return TetrisEpochMetrics(avgEpochLength=len(self.moves), avgEpochScore=finalScore)
+        return TetrisOnlineMetrics(avgEpochLength=len(self.moves), avgEpochScore=finalScore)
 
 
-class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisTransition, TetrisEpochMetrics]):
-    epochs: list[TetrisEpoch]
+class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
+    epochs: list[TetrisEpochRecord]
 
 
-class TetrisEnvironment(Environment[TetrisState, TetrisAction]):
+class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
     currentState: TetrisState
+    currentEpochRecord: TetrisEpochRecord
+    currentGameplayRecord: TetrisGameplayRecord
     gameState: GameState
 
-    def __init__(self) -> None:
+    def __init__(self, epochNumber: int = 0) -> None:
         self.gameState = GameState()
         self.currentState = TetrisState.from_orm(self.gameState)
+        self.currentGameplayRecord = TetrisGameplayRecord(epochs=[])
+        self.currentEpochRecord = TetrisEpochRecord(epochNumber=epochNumber, moves=[])
 
     def step(self, action: TetrisAction) -> TetrisTransition:
         oldState = self.currentState
@@ -138,9 +142,13 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction]):
         self.currentState = TetrisState.from_orm(self.gameState)
         reward = self.getReward(oldState, action, self.currentState)
 
-        return TetrisTransition(
+        transition = TetrisTransition(
             state=oldState, action=action, newState=self.currentState, reward=reward, isTerminal=isTerminal
         )
+        self._updateEpoch(transition)
+        if transition.isTerminal:
+            self._startNewEpoch()
+        return transition
 
     def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:
         return 1 + newState.score - oldState.score

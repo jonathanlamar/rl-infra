@@ -8,7 +8,7 @@ import torch
 from typing_extensions import Self
 
 from rl_infra.types.base_types import SerializableDataClass
-from rl_infra.types.online.environment import ModelOnlineMetrics
+from rl_infra.types.online.environment import OnlineMetrics
 
 
 class ModelType(str, Enum):
@@ -21,7 +21,7 @@ class ModelDbKey(SerializableDataClass):
     modelTag: str
 
 
-Metrics = TypeVar("Metrics", bound=ModelOnlineMetrics, contravariant=True)
+Metrics = TypeVar("Metrics", bound=OnlineMetrics, contravariant=True)
 
 
 class ModelDbEntry(ABC, SerializableDataClass, Generic[Metrics]):

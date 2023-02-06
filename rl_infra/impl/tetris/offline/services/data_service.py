@@ -3,8 +3,8 @@ from __future__ import annotations
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.tetris_environment import (
     TetrisAction,
-    TetrisEpoch,
-    TetrisEpochMetrics,
+    TetrisEpochRecord,
+    TetrisOnlineMetrics,
     TetrisGameplayRecord,
     TetrisState,
     TetrisTransition,
@@ -24,7 +24,7 @@ class TetrisDataDbEntry(DataDbEntry[TetrisTransition]):
 
 
 class TetrisDataService(
-    DataService[TetrisDataDbEntry, TetrisState, TetrisAction, TetrisTransition, TetrisEpochMetrics]
+    DataService[TetrisDataDbEntry, TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]
 ):
     dbPath: str
 
@@ -45,7 +45,7 @@ class TetrisDataService(
         for epoch in gameplay.epochs:
             self.pushEpoch(epoch)
 
-    def pushEpoch(self, epoch: TetrisEpoch) -> None:
+    def pushEpoch(self, epoch: TetrisEpochRecord) -> None:
         epochNumber = epoch.epochNumber
         entries = list(
             map(

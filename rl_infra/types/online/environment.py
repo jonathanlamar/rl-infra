@@ -1,5 +1,8 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from functools import reduce
 from typing import Generic, Protocol, TypeVar
+
+from typing_extensions import Self
 
 from rl_infra.types.base_types import SerializableDataClass
 
@@ -21,6 +24,32 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
     newState: S
     reward: float
     isTerminal: bool
+
+
+class ModelOnlineMetrics(ABC, SerializableDataClass):
+    @abstractmethod
+    def updateWithNewValues(self, other: Self) -> Self:
+        ...
+
+
+M = TypeVar("M", bound=ModelOnlineMetrics)
+T = TypeVar("T", bound=Transition)
+
+
+class Epoch(ABC, SerializableDataClass, Generic[S, A, T, M]):
+    epochNumber: int
+    moves: list[T]
+
+    @abstractmethod
+    def computeOnlineMetrics(self) -> M:
+        ...
+
+
+class GameplayRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):
+    epochs: list[Epoch[S, A, T, M]]
+
+    def computeOnlineMetrics(self) -> M:
+        return reduce((lambda e1, e2: e1.updateWithNewValues(e2)), map(lambda e: e.computeOnlineMetrics(), self.epochs))
 
 
 class Environment(Protocol[S, A]):

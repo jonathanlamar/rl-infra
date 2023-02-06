@@ -4,7 +4,8 @@ import torch
 from tetris.config import BOARD_SIZE
 
 from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
-from rl_infra.impl.tetris.online.config import MODEL_ROOT_PATH
+from rl_infra.impl.tetris.offline.services.model_service import TetrisModelDbEntry
+from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_WEIGHTS_PATH
 from rl_infra.impl.tetris.online.tetris_environment import TetrisAction, TetrisState
 from rl_infra.types.online.agent import Agent
 
@@ -12,8 +13,10 @@ from rl_infra.types.online.agent import Agent
 class TetrisAgent(Agent[TetrisState, TetrisAction]):
     epsilon: float
     policy: DeepQNetwork
+    numEpochsPlayed: int
+    _possibleActions = list(sorted(TetrisAction))
 
-    def __init__(self, device: torch.device, epsilon: float = 0.1, coldStart: bool = False) -> None:
+    def __init__(self, device: torch.device, epsilon: float = 0.1) -> None:
         self.epsilon = epsilon
         self.policy = DeepQNetwork(
             arrayHeight=BOARD_SIZE[0],
@@ -21,10 +24,10 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
             numOutputs=5,
             device=device,
         )
-        if not coldStart:
-            self.policy.load_state_dict(torch.load(MODEL_ROOT_PATH))
+        self.policy.load_state_dict(torch.load(MODEL_WEIGHTS_PATH))
+        entry = TetrisModelDbEntry.parse_file(MODEL_ENTRY_PATH)
+        self.numEpochsPlayed = entry.numEpochsPlayed
         # Make sure the models always see the same order
-        self._possibleActions = list(sorted(TetrisAction))
 
     def choosePolicyAction(self, state: TetrisState) -> TetrisAction:
         input = TetrisAgent.toDqnInput(state)

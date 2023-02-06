@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from contextlib import AbstractContextManager
 from types import TracebackType
@@ -9,6 +10,8 @@ class SqliteConnection(AbstractContextManager[sqlite3.Cursor]):
 
     def __init__(self, dbPath: str) -> None:
         self.dbPath = dbPath
+        if not os.path.exists(os.path.dirname(dbPath)):
+            os.makedirs(os.path.dirname(dbPath))
 
     def __enter__(self) -> sqlite3.Cursor:
         self.connection = sqlite3.connect(self.dbPath)

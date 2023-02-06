@@ -9,7 +9,15 @@ from tetris.game import GameState, KeyPress
 from tetris.utils import Tetramino
 
 from rl_infra.types.base_types import NumpyArray
-from rl_infra.types.online.environment import Action, Environment, State, Transition
+from rl_infra.types.online.environment import (
+    Action,
+    Environment,
+    Epoch,
+    GameplayRecord,
+    ModelOnlineMetrics,
+    State,
+    Transition,
+)
 
 
 class TetrisPiece(str, Enum):
@@ -74,12 +82,44 @@ class TetrisAction(Action, Enum):
         return KeyPress[self.value]
 
 
+class TetrisEpochMetrics(ModelOnlineMetrics):
+    avgEpochLength: float | None = None
+    avgEpochScore: float | None = None
+
+    def updateWithNewValues(self, other: TetrisEpochMetrics) -> TetrisEpochMetrics:
+        """For each metric, compute average.  This results in an exponential recency weighted average."""
+
+        def avgWithoutNone(num1: float | None, num2: float | None) -> float | None:
+            nums = [x for x in [num1, num2] if x is not None]
+            if not nums:
+                return None
+            return sum(nums) / len(nums)
+
+        return TetrisEpochMetrics(
+            avgEpochLength=avgWithoutNone(self.avgEpochLength, other.avgEpochLength),
+            avgEpochScore=avgWithoutNone(self.avgEpochScore, other.avgEpochScore),
+        )
+
+
 class TetrisTransition(Transition[TetrisState, TetrisAction]):
     state: TetrisState
     action: TetrisAction
     newState: TetrisState
     reward: float
     isTerminal: bool
+
+
+class TetrisEpoch(Epoch[TetrisState, TetrisAction, TetrisTransition, TetrisEpochMetrics]):
+    epochNumber: int
+    moves: list[TetrisTransition]
+
+    def computeOnlineMetrics(self) -> TetrisEpochMetrics:
+        finalScore = max([move.newState.score for move in self.moves])
+        return TetrisEpochMetrics(avgEpochLength=len(self.moves), avgEpochScore=finalScore)
+
+
+class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisTransition, TetrisEpochMetrics]):
+    epochs: list[TetrisEpoch]
 
 
 class TetrisEnvironment(Environment[TetrisState, TetrisAction]):

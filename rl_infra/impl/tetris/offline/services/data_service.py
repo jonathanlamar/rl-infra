@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
-from rl_infra.impl.tetris.online.tetris_environment import TetrisTransition
+from rl_infra.impl.tetris.online.tetris_environment import (
+    TetrisAction,
+    TetrisEpoch,
+    TetrisEpochMetrics,
+    TetrisGameplayRecord,
+    TetrisState,
+    TetrisTransition,
+)
 from rl_infra.types.offline import DataDbEntry, DataDbRow, DataService, SqliteConnection
 
 
@@ -16,7 +23,9 @@ class TetrisDataDbEntry(DataDbEntry[TetrisTransition]):
         return TetrisDataDbEntry(transition=TetrisTransition.parse_raw(row[0]), epoch=row[1], move=row[2])
 
 
-class TetrisDataService(DataService[TetrisDataDbEntry]):
+class TetrisDataService(
+    DataService[TetrisDataDbEntry, TetrisState, TetrisAction, TetrisTransition, TetrisEpochMetrics]
+):
     dbPath: str
 
     def __init__(self, rootPath: str | None = None) -> None:
@@ -32,7 +41,20 @@ class TetrisDataService(DataService[TetrisDataDbEntry]):
                 );"""
             )
 
-    def push(self, entries: list[TetrisDataDbEntry]) -> None:
+    def pushGameplay(self, gameplay: TetrisGameplayRecord) -> None:
+        for epoch in gameplay.epochs:
+            self.pushEpoch(epoch)
+
+    def pushEpoch(self, epoch: TetrisEpoch) -> None:
+        epochNumber = epoch.epochNumber
+        entries = list(
+            map(
+                lambda tup: TetrisDataDbEntry(transition=tup[1], epoch=epochNumber, move=tup[0]), enumerate(epoch.moves)
+            )
+        )
+        return self.pushEntries(entries)
+
+    def pushEntries(self, entries: list[TetrisDataDbEntry]) -> None:
         query = "INSERT INTO data (transition, epoch_num, move_num) VALUES (?, ?, ?);"
         values = [(entry.transition.json(), entry.epoch, entry.move) for entry in entries]
         with SqliteConnection(self.dbPath) as cur:

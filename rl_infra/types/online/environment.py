@@ -26,17 +26,17 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
     isTerminal: bool
 
 
-class ModelOnlineMetrics(ABC, SerializableDataClass):
+class OnlineMetrics(ABC, SerializableDataClass):
     @abstractmethod
     def updateWithNewValues(self, other: Self) -> Self:
         ...
 
 
-M = TypeVar("M", bound=ModelOnlineMetrics)
+M = TypeVar("M", bound=OnlineMetrics)
 T = TypeVar("T", bound=Transition)
 
 
-class Epoch(ABC, SerializableDataClass, Generic[S, A, T, M]):
+class EpochRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):
     epochNumber: int
     moves: list[T]
 
@@ -44,19 +44,36 @@ class Epoch(ABC, SerializableDataClass, Generic[S, A, T, M]):
     def computeOnlineMetrics(self) -> M:
         ...
 
+    def append(self, transition: T) -> Self:
+        return self.__class__(epochNumber=self.epochNumber, moves=self.moves + [transition])
+
 
 class GameplayRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):
-    epochs: list[Epoch[S, A, T, M]]
+    epochs: list[EpochRecord[S, A, T, M]]
 
     def computeOnlineMetrics(self) -> M:
         return reduce((lambda e1, e2: e1.updateWithNewValues(e2)), map(lambda e: e.computeOnlineMetrics(), self.epochs))
 
+    def appendEpoch(self, epoch: EpochRecord[S, A, T, M]) -> Self:
+        return self.__class__(epochs=self.epochs + [epoch])
 
-class Environment(Protocol[S, A]):
+
+class Environment(Protocol[S, A, T, M]):
     currentState: S
+    currentEpochRecord: EpochRecord[S, A, T, M]
+    currentGameplayRecord: GameplayRecord[S, A, T, M]
 
     def step(self, action: A) -> Transition[S, A]:
         ...
 
     def getReward(self, oldState: S, action: A, newState: S) -> float:
         ...
+
+    def _updateEpoch(self, transition: T) -> None:
+        self.currentEpochRecord = self.currentEpochRecord.append(transition)
+
+    def _startNewEpoch(self, epochNumber: int | None = None) -> None:
+        if epochNumber is None:
+            epochNumber = self.currentEpochRecord.epochNumber + 1
+        self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
+        self.currentEpochRecord = self.currentEpochRecord.__class__(epochNumber=epochNumber, moves=[])

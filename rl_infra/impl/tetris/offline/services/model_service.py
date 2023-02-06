@@ -3,29 +3,28 @@ from __future__ import annotations
 import os
 
 import torch
-from IPython.terminal.embed import embed
 
 from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
-from rl_infra.impl.tetris.online.tetris_environment import TetrisEpochMetrics
+from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
 from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, ModelType, SqliteConnection
 
 TetrisModelDbRow = tuple[str, str, str, int, int, float | None, float | None]
 
 
-class TetrisModelDbEntry(ModelDbEntry[TetrisEpochMetrics]):
+class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics]):
     modelDbKey: ModelDbKey
     modelLocation: str
     numEpochsPlayed: int = 0
     numBatchesTrained: int = 0
-    onlinePerformance: TetrisEpochMetrics = TetrisEpochMetrics()
+    onlinePerformance: TetrisOnlineMetrics = TetrisOnlineMetrics()
 
     @staticmethod
     def fromDbRow(row: TetrisModelDbRow) -> TetrisModelDbEntry:
         # TODO: This might be doable from pydantic builtins
         key = ModelDbKey(modelType=ModelType[row[0]], modelTag=row[1])
-        epochMetrics = TetrisEpochMetrics(avgEpochLength=row[5], avgEpochScore=row[6])
+        epochMetrics = TetrisOnlineMetrics(avgEpochLength=row[5], avgEpochScore=row[6])
         return TetrisModelDbEntry(
             modelDbKey=key,
             modelLocation=row[2],
@@ -35,7 +34,7 @@ class TetrisModelDbEntry(ModelDbEntry[TetrisEpochMetrics]):
         )
 
 
-class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisEpochMetrics]):
+class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOnlineMetrics]):
     def __init__(self) -> None:
         self.dbPath = f"{DB_ROOT_PATH}/model.db"
         self.modelWeightsPathStub = f"{DB_ROOT_PATH}/models"
@@ -77,14 +76,14 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisEp
         model: DeepQNetwork | None = None,
         numEpochsPlayed: int | None = None,
         numBatchesTrained: int | None = None,
-        onlinePerformance: TetrisEpochMetrics | None = None,
+        onlinePerformance: TetrisOnlineMetrics | None = None,
     ) -> None:
         entry = TetrisModelDbEntry(
             modelDbKey=key,
             modelLocation=self._generateWeightsLocation(key),
             numEpochsPlayed=numEpochsPlayed or 0,
             numBatchesTrained=numBatchesTrained or 0,
-            onlinePerformance=onlinePerformance or TetrisEpochMetrics(),
+            onlinePerformance=onlinePerformance or TetrisOnlineMetrics(),
         )
         maybeExistingEntry = self._fetchEntry(key)
         if maybeExistingEntry is not None:
@@ -119,7 +118,6 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisEp
         epochScore = (
             entry.onlinePerformance.avgEpochScore if entry.onlinePerformance.avgEpochScore is not None else "NULL"
         )
-        embed(header="In upsert before modification.  Checking.")
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 f"""INSERT INTO models (
@@ -147,7 +145,6 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisEp
                     avg_epoch_length=excluded.avg_epoch_length,
                     avg_epoch_score=excluded.avg_epoch_score;"""
             )
-        embed(header="In upsert after modification.  Checking.")
 
     def _writeWeights(self, key: ModelDbKey, model: DeepQNetwork) -> None:
         location = self._generateWeightsLocation(key)

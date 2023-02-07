@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import json
+
 import torch
 
 from rl_infra.impl.tetris.offline.services.data_service import TetrisDataService
@@ -21,7 +23,8 @@ agent = TetrisAgent(device=device)
 epochIndex = agent.numEpochsPlayed
 
 env = TetrisEnvironment(epochNumber=epochIndex)
-for _ in range(100):
+losses = []
+for _ in range(10):
     for _ in range(10):
         gameIsOver = False
         while not gameIsOver:
@@ -45,4 +48,6 @@ for _ in range(100):
     )
 
     print("Retraining models")
-    trainingService.retrainAndPublish(modelTag, batchSize=128, numBatches=1)
+    losses += trainingService.retrainAndPublish(modelTag, batchSize=128, numBatches=1)
+    with open("data/offline/loss.json", "w") as f:
+        json.dump(losses, f)

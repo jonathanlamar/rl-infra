@@ -61,9 +61,17 @@ class TetrisDataService(
             cur.executemany(query, values)
 
     def sample(self, batchSize: int) -> list[TetrisDataDbEntry]:
-        # FIXME: This needs to be a rencency-weighted random selection.
         with SqliteConnection(self.dbPath) as cur:
-            allRows = cur.execute("SELECT * FROM data ORDER BY epoch_num DESC, move_num DESC").fetchmany(self.capacity)
+            allRows = cur.execute(
+                f"""
+                    WITH table1 AS (
+                        SELECT * FROM data
+                        ORDER BY epoch_num DESC, move_num DESC
+                        LIMIT {self.capacity}
+                    )
+                    SELECT * FROM table1 ORDER BY RANDOM() LIMIT {batchSize}
+                """
+            ).fetchall()
         if len(allRows) < batchSize:
             raise ValueError("Not enough results for batch.  Reduce batch size or collect more data.")
         return [TetrisDataDbEntry.fromDbRow(row) for row in random.sample(allRows, batchSize)]

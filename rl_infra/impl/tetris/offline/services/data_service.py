@@ -1,4 +1,5 @@
 from __future__ import annotations
+import random
 
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.tetris_environment import (
@@ -27,11 +28,15 @@ class TetrisDataService(
     DataService[TetrisDataDbEntry, TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]
 ):
     dbPath: str
+    capacity: int
 
-    def __init__(self, rootPath: str | None = None) -> None:
+    def __init__(self, rootPath: str | None = None, capacity: int | None = None) -> None:
         if rootPath is None:
             rootPath = DB_ROOT_PATH
         self.dbPath = f"{rootPath}/data.db"
+        if capacity is None:
+            capacity = 10000
+        self.capacity = capacity
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 """CREATE TABLE IF NOT EXISTS data (
@@ -63,5 +68,7 @@ class TetrisDataService(
     def sample(self, batchSize: int) -> list[TetrisDataDbEntry]:
         # FIXME: This needs to be a rencency-weighted random selection.
         with SqliteConnection(self.dbPath) as cur:
-            rows = cur.execute("SELECT * FROM data ORDER BY epoch_num DESC, move_num DESC").fetchmany(batchSize)
-        return [TetrisDataDbEntry.fromDbRow(row) for row in rows]
+            allRows = cur.execute("SELECT * FROM data ORDER BY epoch_num DESC, move_num DESC").fetchmany(self.capacity)
+        if len(allRows) < batchSize:
+            raise ValueError("Not enough results for batch.  Reduce batch size or collect more data.")
+        return [TetrisDataDbEntry.fromDbRow(row) for row in random.sample(allRows, batchSize)]

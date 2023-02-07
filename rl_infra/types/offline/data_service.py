@@ -19,6 +19,8 @@ class DataDbEntry(ABC, SerializableDataClass, Generic[T]):
 
 
 class DataService(Protocol[DbEntry, S, A, T, M]):
+    capacity: int
+
     def pushEpoch(self, epoch: EpochRecord[S, A, T, M]) -> None:
         ...
 

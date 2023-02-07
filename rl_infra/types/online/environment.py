@@ -69,11 +69,5 @@ class Environment(Protocol[S, A, T, M]):
     def getReward(self, oldState: S, action: A, newState: S) -> float:
         ...
 
-    def _updateEpoch(self, transition: T) -> None:
-        self.currentEpochRecord = self.currentEpochRecord.append(transition)
-
-    def _startNewEpoch(self, epochNumber: int | None = None) -> None:
-        if epochNumber is None:
-            epochNumber = self.currentEpochRecord.epochNumber + 1
-        self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
-        self.currentEpochRecord = self.currentEpochRecord.__class__(epochNumber=epochNumber, moves=[])
+    def startNewEpoch(self, epochNumber: int = 0) -> None:
+        ...

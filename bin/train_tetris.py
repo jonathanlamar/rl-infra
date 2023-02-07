@@ -21,14 +21,17 @@ agent = TetrisAgent(device=device)
 epochIndex = agent.numEpochsPlayed
 
 env = TetrisEnvironment(epochNumber=epochIndex)
-for _ in range(1):
-    for _ in range(1):
+for _ in range(100):
+    for _ in range(100):
         gameIsOver = False
         while not gameIsOver:
             action = agent.chooseAction(env.currentState)
             transition = env.step(action)
             gameIsOver = transition.isTerminal
-        print(f"Epoch {epochIndex} done.  There were {len(env.currentGameplayRecord.epochs[-1].moves)} moves.")
+        print(
+            f"Epoch {env.currentEpochRecord.epochNumber} done.  There were {len(env.currentEpochRecord.moves)} moves."
+        )
+        env.startNewEpoch()
 
     print("Saving gameplay.")
     gameplay = env.currentGameplayRecord
@@ -42,4 +45,4 @@ for _ in range(1):
     )
 
     print("Retraining models")
-    trainingService.retrainAndPublish(modelTag, batchSize=32, numBatches=10)
+    trainingService.retrainAndPublish(modelTag, batchSize=128, numBatches=1)

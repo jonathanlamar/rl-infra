@@ -14,7 +14,7 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
     epsilon: float
     policy: DeepQNetwork
     numEpochsPlayed: int
-    _possibleActions = list(sorted(TetrisAction))
+    possibleActions = list(sorted(TetrisAction))
 
     def __init__(self, device: torch.device, epsilon: float = 0.1) -> None:
         self.epsilon = epsilon
@@ -30,17 +30,13 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
         # Make sure the models always see the same order
 
     def choosePolicyAction(self, state: TetrisState) -> TetrisAction:
-        input = TetrisAgent.toDqnInput(state)
+        input = state.toDqnInput()
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
             prediction = self.policy(input).max(1)[1].view(1).numpy()[0]
-        return self._possibleActions[prediction]
+        return self.possibleActions[prediction]
 
     def chooseRandomAction(self) -> TetrisAction:
-        return random.choice(self._possibleActions)
-
-    @staticmethod
-    def toDqnInput(state: TetrisState) -> torch.Tensor:
-        return torch.from_numpy(state.board.reshape((1, 1) + BOARD_SIZE))
+        return random.choice(self.possibleActions)

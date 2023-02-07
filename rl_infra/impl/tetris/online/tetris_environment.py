@@ -4,9 +4,12 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Literal, Type
 
+import torch
 from pydantic.utils import GetterDict
+from tetris.config import BOARD_SIZE
 from tetris.game import GameState, KeyPress
 from tetris.utils import Tetramino
+from torch import Tensor
 
 from rl_infra.types.base_types import NumpyArray
 from rl_infra.types.online.environment import (
@@ -63,6 +66,9 @@ class TetrisState(State):
     score: int
     activePiece: TetrisPiece
     nextPiece: TetrisPiece
+
+    def toDqnInput(self) -> Tensor:
+        return torch.from_numpy(self.board.reshape((1, 1) + BOARD_SIZE))
 
     class Config(State.Config):
         """pydantic config class"""
@@ -145,10 +151,14 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition,
         transition = TetrisTransition(
             state=oldState, action=action, newState=self.currentState, reward=reward, isTerminal=isTerminal
         )
-        self._updateEpoch(transition)
-        if transition.isTerminal:
-            self._startNewEpoch()
+        self.currentEpochRecord = self.currentEpochRecord.append(transition)
         return transition
 
     def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:
         return 1 + newState.score - oldState.score
+
+    def startNewEpoch(self) -> None:
+        self.gameState = GameState()
+        self.currentState = TetrisState.from_orm(self.gameState)
+        self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
+        self.currentEpochRecord = TetrisEpochRecord(epochNumber=self.currentEpochRecord.epochNumber + 1, moves=[])

@@ -40,7 +40,7 @@ class TetrisTrainingService:
             key=ModelDbKey(modelType=ModelType.CRITIC, modelTag=modelTag),
         )
 
-    def retrainAndPublish(self, modelTag: str, batchSize: int, numBatches):
+    def retrainAndPublish(self, modelTag: str, batchSize: int, numBatches) -> list[float]:
         actorEntry = self.modelService.getModelEntry(modelTag, ModelType.ACTOR)
         actor = self.modelFactory()
         actor.load_state_dict(torch.load(actorEntry.modelLocation))
@@ -48,6 +48,20 @@ class TetrisTrainingService:
         critic = self.modelFactory()
         critic.load_state_dict(torch.load(criticEntry.modelLocation))
 
+        losses = []
+        for _ in range(numBatches):
+            actor, loss = self._performBackpropOnBatch(actor, critic, batchSize)
+            losses.append(loss)
+            critic = self._softUpdateCritic(actor, critic)
+
+        self.modelService.updateModel(actorEntry.modelDbKey, model=actor, numBatchesTrained=numBatches)
+        self.modelService.updateModel(criticEntry.modelDbKey, model=critic, numBatchesTrained=numBatches)
+
+        return losses
+
+    def _performBackpropOnBatch(
+        self, actor: DeepQNetwork, critic: DeepQNetwork, batchSize: int
+    ) -> tuple[DeepQNetwork, float]:
         batch = self.dataService.sample(batchSize)
         nonFinalMask = torch.tensor(
             tuple(map(lambda s: not s.transition.isTerminal, batch)), device=self.device, dtype=torch.bool
@@ -75,6 +89,7 @@ class TetrisTrainingService:
             nextStateValues[nonFinalMask] = critic(nonFinalNextStates).max(1)[0]
 
         # Compute expected Q values
+        # TODO: Not sure where to stash these constants yet.  Just putting them here for now.
         GAMMA = 0.99
         expectedStateActionValues = (nextStateValues * GAMMA) + rewardBatch
 
@@ -90,6 +105,9 @@ class TetrisTrainingService:
         torch.nn.utils.clip_grad_value_(actor.parameters(), 100)
         optimizer.step()
 
+        return actor, loss.item()
+
+    def _softUpdateCritic(self, actor, critic) -> DeepQNetwork:
         # Soft update of the target network's weights
         # θ′ ← τ θ + (1 −τ )θ′
         TAU = 0.005
@@ -99,5 +117,4 @@ class TetrisTrainingService:
             criticStateDict[key] = actorStateDict[key] * TAU + criticStateDict[key] * (1 - TAU)
         critic.load_state_dict(criticStateDict)
 
-        self.modelService.updateModel(actorEntry.modelDbKey, model=actor, numBatchesTrained=numBatches)
-        self.modelService.updateModel(criticEntry.modelDbKey, model=critic, numBatchesTrained=numBatches)
+        return critic

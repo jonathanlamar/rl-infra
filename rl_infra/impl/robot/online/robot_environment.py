@@ -1,40 +1,43 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from enum import Enum
 
-from rl_infra.impl.robot.online.robot_client import RobotClient, RobotSensorReading
-from rl_infra.types.online.environment import Action, Environment, State, Transition
-
-
-# Robot state contains no data beyond what is in the sensor reading
-class RobotState(State, RobotSensorReading):
-    pass
+from rl_infra.impl.robot.online.robot_client import RobotClient
+from rl_infra.impl.robot.online.robot_transition import RobotAction, RobotState, RobotTransition
+from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord, OnlineMetrics
 
 
-class RobotAction(Action, Enum):
-    MOVE_FORWARD = "MOVE_FORWARD"
-    MOVE_BACKWARD = "MOVE_BACKWARD"
-    TURN_LEFT = "TURN_LEFT"
-    TURN_RIGHT = "TURN_RIGHT"
-    DO_NOTHING = "DO_NOTHING"
+# TODO: Implement stubs here
+class RobotOnlineMetrics(OnlineMetrics):
+    def updateWithNewValues(self, other: RobotOnlineMetrics) -> RobotOnlineMetrics:
+        return self
 
 
-class RobotTransition(Transition[RobotState, RobotAction]):
-    state: RobotState
-    action: RobotAction
-    newState: RobotState
-    reward: float
-    isTerminal: bool
+class RobotEpochRecord(EpochRecord[RobotState, RobotAction, RobotTransition, RobotOnlineMetrics]):
+    epochNumber: int
+    moves: list[RobotTransition]
+
+    def computeOnlineMetrics(self) -> RobotOnlineMetrics:
+        return RobotOnlineMetrics()
 
 
-class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
+class RobotGameplayRecord(GameplayRecord[RobotState, RobotAction, RobotTransition, RobotOnlineMetrics]):
+    epochs: list[RobotEpochRecord]
+
+
+class RobotEnvironment(ABC, Environment[RobotState, RobotAction, RobotTransition, RobotOnlineMetrics]):
     currentState: RobotState
     moveStepSizeCm: int
     turnStepSizeDeg: int
+    currentEpochRecord: RobotEpochRecord
+    currentGameplayRecord: RobotGameplayRecord
 
-    def __init__(self, moveStepSizeCm: int = 15, turnStepSizeDeg: int = 30) -> None:
+    def __init__(self, epochNumber: int = 0, moveStepSizeCm: int = 15, turnStepSizeDeg: int = 30) -> None:
         self.moveStepSizeCm = moveStepSizeCm
         self.turnStepSizeDeg = turnStepSizeDeg
         self.currentState = RobotEnvironment._getState()
+        self.currentEpochRecord = RobotEpochRecord(epochNumber=epochNumber, moves=[])
+        self.currentGameplayRecord = RobotGameplayRecord(epochs=[])
 
     def step(self, action: RobotAction) -> RobotTransition:
         match action:
@@ -72,3 +75,8 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction]):
     def _getState() -> RobotState:
         sensorReading = RobotClient.getSensorReading()
         return RobotState(**sensorReading.dict())
+
+    def startNewEpoch(self) -> None:
+        self.currentState = RobotEnvironment._getState()
+        self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
+        self.currentEpochRecord = RobotEpochRecord(epochNumber=self.currentEpochRecord.epochNumber + 1, moves=[])

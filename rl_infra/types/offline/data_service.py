@@ -2,7 +2,8 @@ from abc import ABC
 from typing import Generic, Protocol, TypeVar
 
 from rl_infra.types.base_types import SerializableDataClass
-from rl_infra.types.online.environment import Action, EpochRecord, GameplayRecord, OnlineMetrics, State, Transition
+from rl_infra.types.online.environment import EpochRecord, GameplayRecord, OnlineMetrics
+from rl_infra.types.online.transition import Action, State, Transition
 
 A = TypeVar("A", bound=Action)
 DataDbRow = tuple[str, int, int]

@@ -19,3 +19,4 @@ data/*
 # Mac stuff
 .DS_Store
 .ipynb_checkpoints
+notebook

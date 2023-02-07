@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 from numpy import pi
 
-from rl_infra.impl.robot.online.robot_environment import RobotAction, RobotState
+from rl_infra.impl.robot.online.robot_transition import RobotAction, RobotState
 from rl_infra.types.online.agent import Agent
 
 

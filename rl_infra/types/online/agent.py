@@ -1,7 +1,7 @@
 import random
 from typing import Protocol, TypeVar
 
-from rl_infra.types.online.environment import Action, State
+from rl_infra.types.online.transition import Action, State
 
 S = TypeVar("S", bound=State, covariant=False, contravariant=True)
 A = TypeVar("A", bound=Action, covariant=True, contravariant=False)

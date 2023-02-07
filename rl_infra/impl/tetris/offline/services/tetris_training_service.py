@@ -7,7 +7,6 @@ from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
-from rl_infra.types.offline.model_service import ModelDbKey, ModelType
 
 
 class TetrisTrainingService:
@@ -32,21 +31,17 @@ class TetrisTrainingService:
 
     def coldStart(self, modelTag: str):
         self.modelService.publishNewModel(
-            model=self.modelFactory(),
-            key=ModelDbKey(modelType=ModelType.ACTOR, modelTag=modelTag),
-        )
-        self.modelService.publishNewModel(
-            model=self.modelFactory(),
-            key=ModelDbKey(modelType=ModelType.CRITIC, modelTag=modelTag),
+            modelTag=modelTag,
+            actorModel=self.modelFactory(),
+            criticModel=self.modelFactory(),
         )
 
-    def retrainAndPublish(self, modelTag: str, batchSize: int, numBatches) -> list[float]:
-        actorEntry = self.modelService.getModelEntry(modelTag, ModelType.ACTOR)
+    def retrainAndPublish(self, modelTag: str, version: int, batchSize: int, numBatches) -> list[float]:
+        entry = self.modelService.getModelEntry(modelTag, version)
         actor = self.modelFactory()
-        actor.load_state_dict(torch.load(actorEntry.modelLocation))
-        criticEntry = self.modelService.getModelEntry(modelTag, ModelType.CRITIC)
+        actor.load_state_dict(torch.load(entry.actorLocation))
         critic = self.modelFactory()
-        critic.load_state_dict(torch.load(criticEntry.modelLocation))
+        critic.load_state_dict(torch.load(entry.criticLocation))
 
         losses = []
         for _ in range(numBatches):
@@ -54,8 +49,7 @@ class TetrisTrainingService:
             losses.append(loss)
             critic = self._softUpdateCritic(actor, critic)
 
-        self.modelService.updateModel(actorEntry.modelDbKey, model=actor, numBatchesTrained=numBatches)
-        self.modelService.updateModel(criticEntry.modelDbKey, model=critic, numBatchesTrained=numBatches)
+        self.modelService.updateModel(entry.dbKey, actorModel=actor, criticModel=critic, numBatchesTrained=numBatches)
 
         return losses
 

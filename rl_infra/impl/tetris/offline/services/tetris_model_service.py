@@ -9,9 +9,9 @@ from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
 from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
 from rl_infra.types.base_types import Metrics
-from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, ModelType, SqliteConnection
+from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, SqliteConnection
 
-TetrisModelDbRow = tuple[str, str, str, int, int, float | None, float | None, float | None]
+TetrisModelDbRow = tuple[str, int, str, str, int, int, float | None, float | None, float | None]
 
 
 class TetrisOfflineMetrics(Metrics):
@@ -31,8 +31,9 @@ class TetrisOfflineMetrics(Metrics):
 
 
 class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]):
-    modelDbKey: ModelDbKey
-    modelLocation: str
+    dbKey: ModelDbKey
+    actorLocation: str
+    criticLocation: str
     numEpochsPlayed: int = 0
     numBatchesTrained: int = 0
     onlinePerformance: TetrisOnlineMetrics = TetrisOnlineMetrics()
@@ -41,14 +42,15 @@ class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]
     @staticmethod
     def fromDbRow(row: TetrisModelDbRow) -> TetrisModelDbEntry:
         # TODO: This might be doable from pydantic builtins
-        key = ModelDbKey(modelType=ModelType[row[0]], modelTag=row[1])
-        onlineMetrics = TetrisOnlineMetrics(avgEpochLength=row[5], avgEpochScore=row[6])
-        offlineMetrics = TetrisOfflineMetrics(avgHuberLoss=row[7])
+        key = ModelDbKey(tag=row[0], version=row[1])
+        onlineMetrics = TetrisOnlineMetrics(avgEpochLength=row[6], avgEpochScore=row[7])
+        offlineMetrics = TetrisOfflineMetrics(avgHuberLoss=row[8])
         return TetrisModelDbEntry(
-            modelDbKey=key,
-            modelLocation=row[2],
-            numEpochsPlayed=row[3],
-            numBatchesTrained=row[4],
+            dbKey=key,
+            actorLocation=row[2],
+            criticLocation=row[3],
+            numEpochsPlayed=row[4],
+            numBatchesTrained=row[5],
             onlinePerformance=onlineMetrics,
             offlinePerformance=offlineMetrics,
         )
@@ -64,45 +66,70 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 """CREATE TABLE IF NOT EXISTS models (
-                    model_type TEXT NOT NULL,
-                    model_tag TEXT NOT NULL,
-                    model_location TEXT NOT NULL,
+                    tag TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    actor_location TEXT NOT NULL,
+                    critic_location TEXT NOT NULL,
                     num_epochs_played INTEGER NOT NULL,
                     num_batches_trained INTEGER NOT NULL,
                     avg_epoch_length REAL,
                     avg_epoch_score REAL,
                     avg_huber_loss REAL,
-                    PRIMARY KEY(model_type, model_tag)
+                    PRIMARY KEY(tag, version)
                 );"""
             )
 
-    def getModelEntry(self, modelTag: str, modelType: ModelType) -> TetrisModelDbEntry:
-        key = ModelDbKey(modelTag=modelTag, modelType=modelType)
+    def publishNewModel(
+        self, modelTag: str, actorModel: DeepQNetwork | None = None, criticModel: DeepQNetwork | None = None
+    ) -> None:
+        maybeExistingModelKey = self.getLatestVersionKey(modelTag)
+        if maybeExistingModelKey is not None:
+            version = maybeExistingModelKey.version
+        version = 0
+        newModelKey = ModelDbKey(tag=modelTag, version=version)
+        self.updateModel(newModelKey, actorModel=actorModel, criticModel=criticModel)
+
+    def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
+        with SqliteConnection(self.dbPath) as cur:
+            res = cur.execute(
+                f"SELECT tag, version FROM models WHERE tag = '{modelTag}' ORDER BY version DESC"
+            ).fetchone()
+        if res is None:
+            return None
+        return ModelDbKey(tag=res[0], version=res[1])
+
+    def getModelEntry(self, modelTag: str, version: int) -> TetrisModelDbEntry:
+        key = ModelDbKey(tag=modelTag, version=version)
         entry = self._fetchEntry(key)
         if entry is None:
-            raise KeyError(f"Could not find model with tag {modelTag} and type {modelType}")
+            raise KeyError(f"Could not find model with tag {modelTag} and version {version}")
         return entry
 
     def deployModel(self) -> None:
-        entry = self._getBestModel(ModelType.ACTOR)
+        entry = self._getBestModel()
         if not os.path.exists(self.deployModelRootPath):
             os.makedirs(self.deployModelRootPath)
-        os.system(f"cp {entry.modelLocation} {self.deployModelWeightsPath}")
+        os.system(f"cp {entry.actorLocation} {self.deployModelWeightsPath}")
         with open(self.deployModelEntryPath, "w") as f:
             f.write(entry.json())
 
     def updateModel(
         self,
         key: ModelDbKey,
-        model: DeepQNetwork | None = None,
+        actorModel: DeepQNetwork | None = None,
+        criticModel: DeepQNetwork | None = None,
         numEpochsPlayed: int | None = None,
         numBatchesTrained: int | None = None,
         onlinePerformance: TetrisOnlineMetrics | None = None,
         offlinePerformance: TetrisOfflineMetrics | None = None,
     ) -> None:
+        weightsLocation = self._generateWeightsLocation(key)
+        actorWeightsLocation = f"{weightsLocation}/actor.pt"
+        criticWeightsLocation = f"{weightsLocation}/critic.pt"
         entry = TetrisModelDbEntry(
-            modelDbKey=key,
-            modelLocation=self._generateWeightsLocation(key),
+            dbKey=key,
+            actorLocation=actorWeightsLocation,
+            criticLocation=criticWeightsLocation,
             numEpochsPlayed=numEpochsPlayed or 0,
             numBatchesTrained=numBatchesTrained or 0,
             onlinePerformance=onlinePerformance or TetrisOnlineMetrics(),
@@ -111,24 +138,20 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
         maybeExistingEntry = self._fetchEntry(key)
         if maybeExistingEntry is not None:
             entry = maybeExistingEntry.updateWithNewValues(entry)
-        if model is not None:
-            self._writeWeights(key, model)
+        self._writeWeights(key, actorModel, criticModel)
         self._upsertToTable(entry)
 
-    def _getBestModel(self, modelType: ModelType) -> TetrisModelDbEntry:
+    def _getBestModel(self) -> TetrisModelDbEntry:
         with SqliteConnection(self.dbPath) as cur:
-            res = cur.execute(
-                f"SELECT * FROM models WHERE model_type = '{modelType}' ORDER BY avg_epoch_length DESC;"
-            ).fetchone()
+            res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
         if res is None:
-            raise KeyError(f"No best model found with model type {modelType}")
+            raise KeyError("No best model found")
         return TetrisModelDbEntry.fromDbRow(res)
 
     def _fetchEntry(self, modelDbKey: ModelDbKey) -> TetrisModelDbEntry | None:
         with SqliteConnection(self.dbPath) as cur:
             res = cur.execute(
-                f"""SELECT * FROM models
-                WHERE model_type = '{modelDbKey.modelType}' AND model_tag = '{modelDbKey.modelTag}';"""
+                f"""SELECT * FROM models WHERE tag = '{modelDbKey.tag}' AND version = {modelDbKey.version};"""
             ).fetchone()
         if res is None:
             return None
@@ -147,27 +170,30 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 f"""INSERT INTO models (
-                    model_type,
-                    model_tag,
-                    model_location,
+                    tag,
+                    version,
+                    actor_location,
+                    critic_location,
                     num_epochs_played,
                     num_batches_trained,
                     avg_epoch_length,
                     avg_epoch_score,
                     avg_huber_loss
                 ) VALUES (
-                    '{entry.modelDbKey.modelType}',
-                    '{entry.modelDbKey.modelTag}',
-                    '{entry.modelLocation}',
+                    '{entry.dbKey.tag}',
+                    '{entry.dbKey.version}',
+                    '{entry.actorLocation}',
+                    '{entry.criticLocation}',
                     {entry.numEpochsPlayed},
                     {entry.numBatchesTrained},
                     {epochLength},
                     {epochScore},
                     {huberLoss}
                 )
-                ON CONFLICT (model_type, model_tag)
+                ON CONFLICT (tag, version)
                 DO UPDATE SET
-                    model_location=excluded.model_location,
+                    actor_location=excluded.actor_location,
+                    critic_location=excluded.critic_location,
                     num_epochs_played=excluded.num_epochs_played,
                     num_batches_trained=excluded.num_batches_trained,
                     avg_epoch_length=excluded.avg_epoch_length,
@@ -175,12 +201,16 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
                     avg_huber_loss=excluded.avg_huber_loss;"""
             )
 
-    def _writeWeights(self, key: ModelDbKey, model: DeepQNetwork) -> None:
+    def _writeWeights(
+        self, key: ModelDbKey, actorModel: DeepQNetwork | None = None, criticModel: DeepQNetwork | None = None
+    ) -> None:
         location = self._generateWeightsLocation(key)
-        if not os.path.exists(os.path.dirname(location)):
-            os.makedirs(os.path.dirname(location))
-        torch.save(model.state_dict(), location)
+        if not os.path.exists(location):
+            os.makedirs(location)
+        if actorModel is not None:
+            torch.save(actorModel.state_dict(), f"{location}/actor.pt")
+        if criticModel is not None:
+            torch.save(criticModel.state_dict(), f"{location}/critic.pt")
 
     def _generateWeightsLocation(self, modelDbKey: ModelDbKey) -> str:
-        directory = f"{self.modelWeightsPathStub}/{modelDbKey.modelType}/{modelDbKey.modelTag}"
-        return f"{directory}/weights.pt"
+        return f"{self.modelWeightsPathStub}/{modelDbKey.tag}/{modelDbKey.version}"

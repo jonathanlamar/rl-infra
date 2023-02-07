@@ -6,7 +6,7 @@ from tetris.config import BOARD_SIZE
 from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.model_service import TetrisModelDbEntry
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_WEIGHTS_PATH
-from rl_infra.impl.tetris.online.tetris_environment import TetrisAction, TetrisState
+from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
 from rl_infra.types.online.agent import Agent
 
 

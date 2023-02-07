@@ -8,33 +8,53 @@ from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
 from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
+from rl_infra.types.base_types import Metrics
 from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, ModelType, SqliteConnection
 
-TetrisModelDbRow = tuple[str, str, str, int, int, float | None, float | None]
+TetrisModelDbRow = tuple[str, str, str, int, int, float | None, float | None, float | None]
 
 
-class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics]):
+class TetrisOfflineMetrics(Metrics):
+    avgHuberLoss: float | None = None
+
+    @classmethod
+    def fromList(cls, vals: list[float]) -> TetrisOfflineMetrics:
+        if not vals:
+            return TetrisOfflineMetrics()
+        avgLoss = sum(vals) / len(vals)
+        return cls(avgHuberLoss=avgLoss)
+
+    def updateWithNewValues(self, other: TetrisOfflineMetrics) -> TetrisOfflineMetrics:
+        return TetrisOfflineMetrics(
+            avgHuberLoss=TetrisOfflineMetrics.avgWithoutNone(self.avgHuberLoss, other.avgHuberLoss),
+        )
+
+
+class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]):
     modelDbKey: ModelDbKey
     modelLocation: str
     numEpochsPlayed: int = 0
     numBatchesTrained: int = 0
     onlinePerformance: TetrisOnlineMetrics = TetrisOnlineMetrics()
+    offlinePerformance: TetrisOfflineMetrics = TetrisOfflineMetrics()
 
     @staticmethod
     def fromDbRow(row: TetrisModelDbRow) -> TetrisModelDbEntry:
         # TODO: This might be doable from pydantic builtins
         key = ModelDbKey(modelType=ModelType[row[0]], modelTag=row[1])
-        epochMetrics = TetrisOnlineMetrics(avgEpochLength=row[5], avgEpochScore=row[6])
+        onlineMetrics = TetrisOnlineMetrics(avgEpochLength=row[5], avgEpochScore=row[6])
+        offlineMetrics = TetrisOfflineMetrics(avgHuberLoss=row[7])
         return TetrisModelDbEntry(
             modelDbKey=key,
             modelLocation=row[2],
             numEpochsPlayed=row[3],
             numBatchesTrained=row[4],
-            onlinePerformance=epochMetrics,
+            onlinePerformance=onlineMetrics,
+            offlinePerformance=offlineMetrics,
         )
 
 
-class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOnlineMetrics]):
+class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOnlineMetrics, TetrisOfflineMetrics]):
     def __init__(self) -> None:
         self.dbPath = f"{DB_ROOT_PATH}/model.db"
         self.modelWeightsPathStub = f"{DB_ROOT_PATH}/models"
@@ -51,6 +71,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
                     num_batches_trained INTEGER NOT NULL,
                     avg_epoch_length REAL,
                     avg_epoch_score REAL,
+                    avg_huber_loss REAL,
                     PRIMARY KEY(model_type, model_tag)
                 );"""
             )
@@ -77,6 +98,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
         numEpochsPlayed: int | None = None,
         numBatchesTrained: int | None = None,
         onlinePerformance: TetrisOnlineMetrics | None = None,
+        offlinePerformance: TetrisOfflineMetrics | None = None,
     ) -> None:
         entry = TetrisModelDbEntry(
             modelDbKey=key,
@@ -84,6 +106,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
             numEpochsPlayed=numEpochsPlayed or 0,
             numBatchesTrained=numBatchesTrained or 0,
             onlinePerformance=onlinePerformance or TetrisOnlineMetrics(),
+            offlinePerformance=offlinePerformance or TetrisOfflineMetrics(),
         )
         maybeExistingEntry = self._fetchEntry(key)
         if maybeExistingEntry is not None:
@@ -118,6 +141,9 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
         epochScore = (
             entry.onlinePerformance.avgEpochScore if entry.onlinePerformance.avgEpochScore is not None else "NULL"
         )
+        huberLoss = (
+            entry.offlinePerformance.avgHuberLoss if entry.offlinePerformance.avgHuberLoss is not None else "NULL"
+        )
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 f"""INSERT INTO models (
@@ -127,7 +153,8 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
                     num_epochs_played,
                     num_batches_trained,
                     avg_epoch_length,
-                    avg_epoch_score
+                    avg_epoch_score,
+                    avg_huber_loss
                 ) VALUES (
                     '{entry.modelDbKey.modelType}',
                     '{entry.modelDbKey.modelTag}',
@@ -135,7 +162,8 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
                     {entry.numEpochsPlayed},
                     {entry.numBatchesTrained},
                     {epochLength},
-                    {epochScore}
+                    {epochScore},
+                    {huberLoss}
                 )
                 ON CONFLICT (model_type, model_tag)
                 DO UPDATE SET
@@ -143,7 +171,8 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
                     num_epochs_played=excluded.num_epochs_played,
                     num_batches_trained=excluded.num_batches_trained,
                     avg_epoch_length=excluded.avg_epoch_length,
-                    avg_epoch_score=excluded.avg_epoch_score;"""
+                    avg_epoch_score=excluded.avg_epoch_score,
+                    avg_huber_loss=excluded.avg_huber_loss;"""
             )
 
     def _writeWeights(self, key: ModelDbKey, model: DeepQNetwork) -> None:

@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import json
-
 import torch
 
 from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService
+from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
 from rl_infra.impl.tetris.offline.services.tetris_training_service import TetrisTrainingService
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
@@ -40,14 +38,13 @@ for _ in range(10):
     gameplay = env.currentGameplayRecord
     dataService.pushGameplay(gameplay)
 
-    print("Updating online metrics for model")
+    print("Retraining models")
+    losses += trainingService.retrainAndPublish(modelTag, batchSize=128, numBatches=1)
+
+    print("Updating metrics for model")
     modelService.updateModel(
         ModelDbKey(modelTag=modelTag, modelType=ModelType.ACTOR),
         numEpochsPlayed=10,
         onlinePerformance=gameplay.computeOnlineMetrics(),
+        offlinePerformance=TetrisOfflineMetrics.fromList(losses)
     )
-
-    print("Retraining models")
-    losses += trainingService.retrainAndPublish(modelTag, batchSize=128, numBatches=1)
-    with open("data/offline/loss.json", "w") as f:
-        json.dump(losses, f)

@@ -26,7 +26,7 @@ third implementation.
 I have been using conda to manage dependencies.
 
 ```bash
-conda create -n rl_infra python=3.10
+conda create -n rl-infra python=3.10
 conda activate rl_infra
 pip install -r requirements.txt
 pip install .

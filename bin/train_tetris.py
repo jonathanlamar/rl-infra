@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import json
+
 import torch
 
 from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
@@ -34,7 +36,8 @@ for _ in range(NUM_RETRAINS):
             transition = env.step(action)
             gameIsOver = transition.isTerminal
         print(
-            f"Epoch {env.currentEpochRecord.epochNumber} done.  There were {len(env.currentEpochRecord.moves)} moves."
+            f"Epoch {env.currentEpochRecord.epochNumber} done. "
+            + f"There were {len(env.currentEpochRecord.moves)} moves, and the final score was {env.currentState.score}."
         )
         env.startNewEpoch()
 
@@ -49,9 +52,15 @@ for _ in range(NUM_RETRAINS):
     allLosses += losses
 
     print("Updating metrics for model")
+    onlinePerformance = gameplay.computeOnlineMetrics()
+    offlinePerformance = TetrisOfflineMetrics.fromList(losses)
+    print(f"Online performance: {onlinePerformance}.  Offline performance: {offlinePerformance}")
     modelService.updateModel(
         ModelDbKey(tag=modelTag, version=0),
         numEpochsPlayed=EPOCHS_PER_RETRAIN,
-        onlinePerformance=gameplay.computeOnlineMetrics(),
-        offlinePerformance=TetrisOfflineMetrics.fromList(losses),
+        onlinePerformance=onlinePerformance,
+        offlinePerformance=offlinePerformance,
     )
+
+    with open("notebook/allLosses.json", "w") as f:
+        json.dump(allLosses, f)

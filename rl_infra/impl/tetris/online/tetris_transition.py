@@ -60,7 +60,7 @@ class TetrisState(State):
     nextPiece: TetrisPiece
 
     def toDqnInput(self) -> Tensor:
-        return torch.from_numpy(self.board.reshape((1, 1) + BOARD_SIZE))
+        return torch.from_numpy(self.board.copy().reshape((1, 1) + BOARD_SIZE))
 
     class Config(State.Config):
         """pydantic config class"""

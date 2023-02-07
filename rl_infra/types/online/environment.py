@@ -4,20 +4,13 @@ from typing import Generic, Protocol, TypeVar
 
 from typing_extensions import Self
 
-from rl_infra.types.base_types import SerializableDataClass
+from rl_infra.types.base_types import Metrics, SerializableDataClass
 from rl_infra.types.online.transition import Action, State, Transition
-
-
-class OnlineMetrics(ABC, SerializableDataClass):
-    @abstractmethod
-    def updateWithNewValues(self, other: Self) -> Self:
-        ...
-
 
 S = TypeVar("S", bound=State, covariant=False, contravariant=False)
 A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
 T = TypeVar("T", bound=Transition)
-M = TypeVar("M", bound=OnlineMetrics)
+M = TypeVar("M", bound=Metrics)
 
 
 class EpochRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):

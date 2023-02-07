@@ -3,25 +3,20 @@ from __future__ import annotations
 from tetris.game import GameState, KeyPress
 
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
-from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord, OnlineMetrics
+from rl_infra.types.base_types import Metrics
+from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord
 
 
-class TetrisOnlineMetrics(OnlineMetrics):
+class TetrisOnlineMetrics(Metrics):
     avgEpochLength: float | None = None
     avgEpochScore: float | None = None
 
     def updateWithNewValues(self, other: TetrisOnlineMetrics) -> TetrisOnlineMetrics:
         """For each metric, compute average.  This results in an exponential recency weighted average."""
 
-        def avgWithoutNone(num1: float | None, num2: float | None) -> float | None:
-            nums = [x for x in [num1, num2] if x is not None]
-            if not nums:
-                return None
-            return sum(nums) / len(nums)
-
         return TetrisOnlineMetrics(
-            avgEpochLength=avgWithoutNone(self.avgEpochLength, other.avgEpochLength),
-            avgEpochScore=avgWithoutNone(self.avgEpochScore, other.avgEpochScore),
+            avgEpochLength=TetrisOnlineMetrics.avgWithoutNone(self.avgEpochLength, other.avgEpochLength),
+            avgEpochScore=TetrisOnlineMetrics.avgWithoutNone(self.avgEpochScore, other.avgEpochScore),
         )
 
 

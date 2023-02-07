@@ -7,8 +7,7 @@ from typing import Generic, Protocol, TypeVar
 import torch
 from typing_extensions import Self
 
-from rl_infra.types.base_types import SerializableDataClass
-from rl_infra.types.online.environment import OnlineMetrics
+from rl_infra.types.base_types import Metrics, SerializableDataClass
 
 
 class ModelType(str, Enum):
@@ -21,15 +20,17 @@ class ModelDbKey(SerializableDataClass):
     modelTag: str
 
 
-Metrics = TypeVar("Metrics", bound=OnlineMetrics, contravariant=True)
+OnlineMetrics = TypeVar("OnlineMetrics", bound=Metrics, contravariant=True)
+OfflineMetrics = TypeVar("OfflineMetrics", bound=Metrics, contravariant=True)
 
 
-class ModelDbEntry(ABC, SerializableDataClass, Generic[Metrics]):
+class ModelDbEntry(ABC, SerializableDataClass, Generic[OnlineMetrics, OfflineMetrics]):
     modelDbKey: ModelDbKey
     modelLocation: str
     numEpochsPlayed: int
     numBatchesTrained: int
-    onlinePerformance: Metrics
+    onlinePerformance: OnlineMetrics
+    offlinePerformance: OfflineMetrics
 
     def updateWithNewValues(self, other: Self) -> Self:
         if self.modelDbKey != other.modelDbKey or self.modelLocation != other.modelLocation:
@@ -41,6 +42,7 @@ class ModelDbEntry(ABC, SerializableDataClass, Generic[Metrics]):
             numEpochsPlayed=self.numEpochsPlayed + other.numEpochsPlayed,
             numBatchesTrained=self.numBatchesTrained + other.numBatchesTrained,
             onlinePerformance=self.onlinePerformance.updateWithNewValues(other.onlinePerformance),
+            offlinePerformance=self.offlinePerformance.updateWithNewValues(other.offlinePerformance),
         )
 
 
@@ -49,7 +51,7 @@ Entry = TypeVar("Entry", bound=ModelDbEntry, covariant=True)
 
 
 # TODO: Implement performance monitoring, versioning?
-class ModelService(Protocol[Model, Entry, Metrics]):
+class ModelService(Protocol[Model, Entry, OnlineMetrics, OfflineMetrics]):
     def publishNewModel(self, model: Model, key: ModelDbKey) -> None:
         self.updateModel(key, model)
 
@@ -65,6 +67,7 @@ class ModelService(Protocol[Model, Entry, Metrics]):
         model: Model | None = None,
         numEpochsPlayed: int | None = None,
         numBatchesTrained: int | None = None,
-        onlinePerformance: Metrics | None = None,
+        onlinePerformance: OnlineMetrics | None = None,
+        offlinePerformance: OfflineMetrics | None = None,
     ) -> None:
         ...

@@ -6,7 +6,11 @@ from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisMod
 from rl_infra.impl.tetris.offline.services.tetris_training_service import TetrisTrainingService
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
-from rl_infra.types.offline.model_service import ModelDbKey, ModelType
+from rl_infra.types.offline.model_service import ModelDbKey
+
+EPOCHS_PER_RETRAIN = 10
+NUM_RETRAINS = 10
+NUM_BATCHES_PER_RETRAIN = 10
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -19,11 +23,11 @@ trainingService.coldStart(modelTag)
 modelService.deployModel()
 agent = TetrisAgent(device=device)
 epochIndex = agent.numEpochsPlayed
-
 env = TetrisEnvironment(epochNumber=epochIndex)
-losses = []
-for _ in range(10):
-    for _ in range(10):
+
+allLosses = []
+for _ in range(NUM_RETRAINS):
+    for _ in range(EPOCHS_PER_RETRAIN):
         gameIsOver = False
         while not gameIsOver:
             action = agent.chooseAction(env.currentState)
@@ -39,12 +43,15 @@ for _ in range(10):
     dataService.pushGameplay(gameplay)
 
     print("Retraining models")
-    losses += trainingService.retrainAndPublish(modelTag, batchSize=128, numBatches=1)
+    losses = trainingService.retrainAndPublish(
+        modelTag=modelTag, version=0, batchSize=128, numBatches=NUM_BATCHES_PER_RETRAIN
+    )
+    allLosses += losses
 
     print("Updating metrics for model")
     modelService.updateModel(
-        ModelDbKey(modelTag=modelTag, modelType=ModelType.ACTOR),
-        numEpochsPlayed=10,
+        ModelDbKey(tag=modelTag, version=0),
+        numEpochsPlayed=EPOCHS_PER_RETRAIN,
         onlinePerformance=gameplay.computeOnlineMetrics(),
-        offlinePerformance=TetrisOfflineMetrics.fromList(losses)
+        offlinePerformance=TetrisOfflineMetrics.fromList(losses),
     )

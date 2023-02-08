@@ -4,11 +4,12 @@ from abc import ABC, abstractmethod
 
 from rl_infra.impl.robot.online.robot_client import RobotClient
 from rl_infra.impl.robot.online.robot_transition import RobotAction, RobotState, RobotTransition
-from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord, OnlineMetrics
+from rl_infra.types.base_types import Metrics
+from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord
 
 
 # TODO: Implement stubs here
-class RobotOnlineMetrics(OnlineMetrics):
+class RobotOnlineMetrics(Metrics):
     def updateWithNewValues(self, other: RobotOnlineMetrics) -> RobotOnlineMetrics:
         return self
 

@@ -25,6 +25,8 @@ class TetrisOfflineMetrics(Metrics):
         return cls(avgHuberLoss=avgLoss)
 
     def updateWithNewValues(self, other: TetrisOfflineMetrics) -> TetrisOfflineMetrics:
+        """For each metric, compute average.  This results in an exponential recency weighted average."""
+
         return TetrisOfflineMetrics(
             avgHuberLoss=TetrisOfflineMetrics.avgWithoutNone(self.avgHuberLoss, other.avgHuberLoss),
         )
@@ -41,7 +43,6 @@ class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]
 
     @staticmethod
     def fromDbRow(row: TetrisModelDbRow) -> TetrisModelDbEntry:
-        # TODO: This might be doable from pydantic builtins
         key = ModelDbKey(tag=row[0], version=row[1])
         onlineMetrics = TetrisOnlineMetrics(avgEpochLength=row[6], avgEpochScore=row[7])
         offlineMetrics = TetrisOfflineMetrics(avgHuberLoss=row[8])

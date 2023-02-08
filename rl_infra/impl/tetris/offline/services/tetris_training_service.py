@@ -5,7 +5,7 @@ from tetris.config import BOARD_SIZE
 
 from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService
+from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 
 
@@ -36,7 +36,9 @@ class TetrisTrainingService:
             criticModel=self.modelFactory(),
         )
 
-    def retrainAndPublish(self, modelTag: str, version: int, batchSize: int, numBatches) -> list[float]:
+    def retrainAndPublish(self, modelTag: str, version: int, batchSize: int, numBatches: int) -> TetrisOfflineMetrics:
+        if numBatches <= 0:
+            raise ValueError("numBatches must be positive")
         entry = self.modelService.getModelEntry(modelTag, version)
         actor = self.modelFactory()
         actor.load_state_dict(torch.load(entry.actorLocation))
@@ -49,13 +51,17 @@ class TetrisTrainingService:
             losses.append(loss)
             critic = self._softUpdateCritic(actor, critic)
 
+        enumLosses = list([(num + entry.numBatchesTrained, loss) for num, loss in enumerate(losses)])
+        self.modelService.pushBatchLosses(entry.dbKey, enumLosses)
         self.modelService.updateModel(entry.dbKey, actorModel=actor, criticModel=critic, numBatchesTrained=numBatches)
 
-        return losses
+        return TetrisOfflineMetrics.fromList(losses)
 
     def _performBackpropOnBatch(
         self, actor: DeepQNetwork, critic: DeepQNetwork, batchSize: int
     ) -> tuple[DeepQNetwork, float]:
+        if batchSize <= 0:
+            raise ValueError("batchSize must be positive")
         batch = self.dataService.sample(batchSize)
         nonFinalMask = torch.tensor(
             tuple(map(lambda s: not s.transition.isTerminal, batch)), device=self.device, dtype=torch.bool

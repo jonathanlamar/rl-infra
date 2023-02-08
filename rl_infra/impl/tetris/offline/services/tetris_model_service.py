@@ -79,6 +79,15 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
                     PRIMARY KEY(tag, version)
                 );"""
             )
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS loss_history (
+                    tag TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    batch_number INTEGER NOT NULL,
+                    huber_loss REAL NOT NULL,
+                    FOREIGN KEY(tag, version) REFERENCES models(tag, version)
+                );"""
+            )
 
     def publishNewModel(
         self, modelTag: str, actorModel: DeepQNetwork | None = None, criticModel: DeepQNetwork | None = None
@@ -141,6 +150,12 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
             entry = maybeExistingEntry.updateWithNewValues(entry)
         self._writeWeights(key, actorModel, criticModel)
         self._upsertToTable(entry)
+
+    def pushBatchLosses(self, modelKey: ModelDbKey, losses: list[tuple[int, float]]) -> None:
+        query = "INSERT INTO loss_history (tag, version, batch_number, huber_loss) VALUES (?, ?, ?, ?);"
+        values = [(modelKey.tag, modelKey.version, num, loss) for num, loss in losses]
+        with SqliteConnection(self.dbPath) as cur:
+            cur.executemany(query, values)
 
     def _getBestModel(self) -> TetrisModelDbEntry:
         with SqliteConnection(self.dbPath) as cur:

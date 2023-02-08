@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import json
-
 import torch
 
 from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
+from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService
 from rl_infra.impl.tetris.offline.services.tetris_training_service import TetrisTrainingService
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
@@ -27,7 +25,6 @@ agent = TetrisAgent(device=device)
 epochIndex = agent.numEpochsPlayed
 env = TetrisEnvironment(epochNumber=epochIndex)
 
-allLosses = []
 for _ in range(NUM_RETRAINS):
     for _ in range(EPOCHS_PER_RETRAIN):
         gameIsOver = False
@@ -46,14 +43,12 @@ for _ in range(NUM_RETRAINS):
     dataService.pushGameplay(gameplay)
 
     print("Retraining models")
-    losses = trainingService.retrainAndPublish(
+    offlinePerformance = trainingService.retrainAndPublish(
         modelTag=modelTag, version=0, batchSize=128, numBatches=NUM_BATCHES_PER_RETRAIN
     )
-    allLosses += losses
 
     print("Updating metrics for model")
     onlinePerformance = gameplay.computeOnlineMetrics()
-    offlinePerformance = TetrisOfflineMetrics.fromList(losses)
     print(f"Online performance: {onlinePerformance}.  Offline performance: {offlinePerformance}")
     modelService.updateModel(
         ModelDbKey(tag=modelTag, version=0),
@@ -61,6 +56,3 @@ for _ in range(NUM_RETRAINS):
         onlinePerformance=onlinePerformance,
         offlinePerformance=offlinePerformance,
     )
-
-    with open("notebook/allLosses.json", "w") as f:
-        json.dump(allLosses, f)

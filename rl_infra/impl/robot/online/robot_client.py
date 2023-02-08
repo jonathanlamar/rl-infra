@@ -6,8 +6,8 @@ import requests
 from numpy import ndarray, uint8
 from PIL import Image
 
-from rl_infra.types.base_types import NumpyArray, SerializableDataClass, SerializedNumpyArray
 from rl_infra.impl.robot.edge import config
+from rl_infra.types.base_types import NumpyArray, SerializableDataClass, SerializedNumpyArray
 from rl_infra.utils import uncompressNpArray
 
 

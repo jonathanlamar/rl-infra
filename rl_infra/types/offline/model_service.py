@@ -70,3 +70,6 @@ class ModelService(Protocol[Model, Entry, OnlineMetrics, OfflineMetrics]):
         offlinePerformance: OfflineMetrics | None = None,
     ) -> None:
         ...
+
+    def pushBatchLosses(self, modelKey: ModelDbKey, losses: list[float]) -> None:
+        ...

@@ -49,6 +49,8 @@ class TetrisGamestateGetterDict(GetterDict):
                 # Using 2 to encode meaning into the pixels of the active piece
                 board[tuple(idx)] = 2
             return board
+        elif isinstance(self._obj, GameState) and key == "isTerminal":
+            return self._obj.dead
         else:
             return super().get(key, default)
 
@@ -58,6 +60,7 @@ class TetrisState(State):
     score: int
     activePiece: TetrisPiece
     nextPiece: TetrisPiece
+    isTerminal: bool
 
     def toDqnInput(self) -> Tensor:
         return torch.from_numpy(self.board.copy().reshape((1, 1) + BOARD_SIZE))

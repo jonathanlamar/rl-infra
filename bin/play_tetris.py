@@ -3,7 +3,7 @@ from time import sleep
 
 from pynput.keyboard import Key, KeyCode, Listener
 
-from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
+from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction
 from rl_infra.types.offline.backend import SqliteConnection

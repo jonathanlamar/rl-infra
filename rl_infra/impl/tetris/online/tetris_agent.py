@@ -3,8 +3,8 @@ import random
 import torch
 from tetris.config import BOARD_SIZE
 
-from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
-from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelDbEntry
+from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
+from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelDbEntry
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_WEIGHTS_PATH
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
 from rl_infra.types.online.agent import Agent

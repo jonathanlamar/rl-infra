@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tetris.game import GameState, KeyPress
+from tetris.game import GameState
 
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
 from rl_infra.types.base_types import Metrics

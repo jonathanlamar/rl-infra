@@ -7,9 +7,10 @@ from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
+from rl_infra.types.offline.training_service import TrainingService
 
 
-class TetrisTrainingService:
+class TetrisTrainingService(TrainingService):
     modelService: TetrisModelService
     dataService: TetrisDataService
     device: torch.device

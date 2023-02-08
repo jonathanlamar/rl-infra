@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-from time import sleep
+from time import sleep, time
 
 from pynput.keyboard import Key, KeyCode, Listener
+from tetris.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
@@ -30,8 +31,10 @@ def mainLoop(env: TetrisEnvironment, dataService: TetrisDataService):
     while not env.gameState.dead:
         env.step(ACTION)
         ACTION = TetrisAction.NONE
+        if time() - env.gameState.lastAdvanceTime > 0.25:
+            env.gameState.update(KeyPress.DOWN)
         env.gameState.draw()
-        sleep(0.15)
+        sleep(0.05)
 
     print("Saving gameplay.")
     epochRecord = env.currentEpochRecord

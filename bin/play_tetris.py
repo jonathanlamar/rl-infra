@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 from time import sleep
 
 from pynput.keyboard import Key, KeyCode, Listener
@@ -33,7 +31,7 @@ def mainLoop(env: TetrisEnvironment, dataService: TetrisDataService):
         env.step(ACTION)
         ACTION = TetrisAction.NONE
         env.gameState.draw()
-        sleep(0.4)
+        sleep(0.15)
 
     print("Saving gameplay.")
     epochRecord = env.currentEpochRecord

@@ -1,6 +1,6 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
 
+from abc import ABC, abstractmethod
 from dataclasses import asdict
 from typing import Any, Generic, Type, TypeVar
 
@@ -29,6 +29,8 @@ class NumpyArray(np.ndarray, Generic[DType]):
 
     @classmethod
     def validators(cls: Type[Self], val: Any, field: ModelField) -> np.ndarray:
+        if field.sub_fields is None:
+            raise TypeError("Sub fields not found")
         dtypeField = field.sub_fields[0]
         expectedDtype = np.dtype(dtypeField.type_.__args__[0])
         res: np.ndarray | None = None

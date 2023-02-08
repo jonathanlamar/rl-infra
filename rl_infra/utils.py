@@ -6,7 +6,7 @@ import numpy as np
 def compressNpArray(nparr: np.ndarray) -> dict:
     """Returns the given numpy array as a base64 encoded string."""
     return dict(
-        data=base64.b64encode(nparr).decode("ascii"),
+        data=base64.b64encode(bytes(nparr)).decode("ascii"),
         shape=nparr.shape,
         dtype=str(nparr.dtype),
     )

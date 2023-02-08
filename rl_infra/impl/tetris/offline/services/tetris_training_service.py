@@ -96,7 +96,7 @@ class TetrisTrainingService:
         optimizer.zero_grad()
         loss.backward()
         # In-place gradient clipping
-        torch.nn.utils.clip_grad_value_(actor.parameters(), 100)
+        torch.nn.utils.clip_grad.clip_grad_value_(actor.parameters(), 100)
         optimizer.step()
 
         return actor, loss.item()

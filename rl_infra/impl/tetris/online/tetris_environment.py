@@ -60,7 +60,9 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition,
         return transition
 
     def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:
-        return 1 + newState.score - oldState.score
+        if newState.isTerminal:
+            return -1
+        return newState.score - oldState.score
 
     def startNewEpoch(self) -> None:
         self.gameState = GameState()

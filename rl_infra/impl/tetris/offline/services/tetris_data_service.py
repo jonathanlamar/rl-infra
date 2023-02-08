@@ -15,7 +15,6 @@ class TetrisDataDbEntry(DataDbEntry[TetrisTransition]):
 
     @staticmethod
     def fromDbRow(row: DataDbRow) -> TetrisDataDbEntry:
-        # TODO: This might be doable from pydantic builtins
         return TetrisDataDbEntry(transition=TetrisTransition.parse_raw(row[0]), epoch=row[1], move=row[2])
 
 

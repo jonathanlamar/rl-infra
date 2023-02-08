@@ -36,8 +36,8 @@ for _ in range(NUM_RETRAINS):
             transition = env.step(action)
             gameIsOver = transition.isTerminal
         print(
-            f"Epoch {env.currentEpochRecord.epochNumber} done. "
-            + f"There were {len(env.currentEpochRecord.moves)} moves, and the final score was {env.currentState.score}."
+            f"Epoch {env.currentEpochRecord.epochNumber} done. There were {len(env.currentEpochRecord.moves)} moves, "
+            f"and the final score was {env.currentState.score}."
         )
         env.startNewEpoch()
 

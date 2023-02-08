@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 
-from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
+from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEpochRecord, TetrisGameplayRecord, TetrisOnlineMetrics
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
 from rl_infra.types.offline import DataDbEntry, DataDbRow, DataService, SqliteConnection

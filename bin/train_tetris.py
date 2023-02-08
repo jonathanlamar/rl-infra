@@ -3,9 +3,9 @@ import math
 
 import torch
 
-from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService
-from rl_infra.impl.tetris.offline.services.tetris_training_service import TetrisTrainingService
+from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
+from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
+from rl_infra.impl.tetris.offline.tetris_training_service import TetrisTrainingService
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
 from rl_infra.types.offline.model_service import ModelDbKey

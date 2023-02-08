@@ -4,8 +4,8 @@ import os
 
 import torch
 
-from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
-from rl_infra.impl.tetris.offline.services.config import DB_ROOT_PATH
+from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
+from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
 from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
 from rl_infra.types.base_types import Metrics

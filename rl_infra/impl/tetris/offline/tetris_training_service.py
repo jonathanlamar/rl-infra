@@ -3,9 +3,9 @@ from typing import Any
 import torch
 from tetris.config import BOARD_SIZE
 
-from rl_infra.impl.tetris.offline.models.dqn import DeepQNetwork
-from rl_infra.impl.tetris.offline.services.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.services.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
+from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
+from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
+from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 
 

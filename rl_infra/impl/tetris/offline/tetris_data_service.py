@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import random
+from typing import Type
+
+from pydantic import validator
 
 from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEpochRecord, TetrisGameplayRecord, TetrisOnlineMetrics
@@ -8,14 +11,21 @@ from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisSt
 from rl_infra.types.offline import DataDbEntry, DataDbRow, DataService, SqliteConnection
 
 
-class TetrisDataDbEntry(DataDbEntry[TetrisTransition]):
-    transition: TetrisTransition
+class TetrisDataDbEntry(DataDbEntry[TetrisState, TetrisAction]):
+    state: TetrisState
+    action: TetrisAction
+    newState: TetrisState
+    reward: float
+    isTerminal: bool
     epoch: int
     move: int
 
-    @staticmethod
-    def fromDbRow(row: DataDbRow) -> TetrisDataDbEntry:
-        return TetrisDataDbEntry(transition=TetrisTransition.parse_raw(row[0]), epoch=row[1], move=row[2])
+    @validator("state", "newState", pre=True)
+    @classmethod
+    def _parseStateFromJson(cls: Type[TetrisDataDbEntry], val: TetrisState | str) -> TetrisState:
+        if isinstance(val, str):
+            return TetrisState.parse_raw(val)
+        return val
 
 
 class TetrisDataService(
@@ -34,7 +44,11 @@ class TetrisDataService(
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 """CREATE TABLE IF NOT EXISTS data (
-                    transition TEXT,
+                    state TEXT,
+                    action TEXT,
+                    new_state TEXT,
+                    reward REAL,
+                    is_terminal BOOLEAN,
                     epoch_num INTEGER,
                     move_num INTEGER
                 );"""
@@ -45,17 +59,26 @@ class TetrisDataService(
             self.pushEpoch(epoch)
 
     def pushEpoch(self, epoch: TetrisEpochRecord) -> None:
-        epochNumber = epoch.epochNumber
         entries = list(
             map(
-                lambda tup: TetrisDataDbEntry(transition=tup[1], epoch=epochNumber, move=tup[0]), enumerate(epoch.moves)
+                lambda tup: TetrisDataDbEntry(**tup[1].dict(), epoch=epoch.epochNumber, move=tup[0]),
+                enumerate(epoch.moves),
             )
         )
         return self.pushEntries(entries)
 
     def pushEntries(self, entries: list[TetrisDataDbEntry]) -> None:
-        query = "INSERT INTO data (transition, epoch_num, move_num) VALUES (?, ?, ?);"
-        values = [(entry.transition.json(), entry.epoch, entry.move) for entry in entries]
+        query = """
+            INSERT INTO data (
+                state,
+                action,
+                new_state,
+                reward,
+                is_terminal,
+                epoch_num,
+                move_num
+            ) VALUES (?, ?, ?, ?, ?, ?, ?);"""
+        values = [entry.toDbRow() for entry in entries]
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
 
@@ -65,7 +88,7 @@ class TetrisDataService(
                 f"""
                     WITH table1 AS (
                         SELECT * FROM data
-                        ORDER BY epoch_num DESC, move_num DESC
+                        ORDER BY reward DESC, epoch_num DESC, move_num DESC
                         LIMIT {self.capacity}
                     )
                     SELECT * FROM table1 ORDER BY RANDOM() LIMIT {batchSize}
@@ -73,4 +96,4 @@ class TetrisDataService(
             ).fetchall()
         if len(allRows) < batchSize:
             raise ValueError("Not enough results for batch.  Reduce batch size or collect more data.")
-        return [TetrisDataDbEntry.fromDbRow(row) for row in random.sample(allRows, batchSize)]
+        return [TetrisDataDbEntry.from_orm(DataDbRow(*row)) for row in random.sample(allRows, batchSize)]

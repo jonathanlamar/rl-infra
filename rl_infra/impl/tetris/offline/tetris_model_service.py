@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import NamedTuple
 
 import torch
 
@@ -11,7 +12,17 @@ from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
 from rl_infra.types.base_types import Metrics
 from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, SqliteConnection
 
-TetrisModelDbRow = tuple[str, int, str, str, int, int, float | None, float | None, float | None]
+
+class TetrisModelDbRow(NamedTuple):
+    tag: str
+    version: int
+    actorLocation: str
+    criticLocation: str
+    numEpochsPlayed: int
+    numBatchesTrained: int
+    avgEpochLength: float | None
+    avgEpochScore: float | None
+    avgHuberLoss: float | None
 
 
 class TetrisOfflineMetrics(Metrics):
@@ -40,21 +51,6 @@ class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]
     numBatchesTrained: int = 0
     onlinePerformance: TetrisOnlineMetrics = TetrisOnlineMetrics()
     offlinePerformance: TetrisOfflineMetrics = TetrisOfflineMetrics()
-
-    @staticmethod
-    def fromDbRow(row: TetrisModelDbRow) -> TetrisModelDbEntry:
-        key = ModelDbKey(tag=row[0], version=row[1])
-        onlineMetrics = TetrisOnlineMetrics(avgEpochLength=row[6], avgEpochScore=row[7])
-        offlineMetrics = TetrisOfflineMetrics(avgHuberLoss=row[8])
-        return TetrisModelDbEntry(
-            dbKey=key,
-            actorLocation=row[2],
-            criticLocation=row[3],
-            numEpochsPlayed=row[4],
-            numBatchesTrained=row[5],
-            onlinePerformance=onlineMetrics,
-            offlinePerformance=offlineMetrics,
-        )
 
 
 class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOnlineMetrics, TetrisOfflineMetrics]):
@@ -162,7 +158,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
             res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
         if res is None:
             raise KeyError("No best model found")
-        return TetrisModelDbEntry.fromDbRow(res)
+        return TetrisModelDbEntry.from_orm(TetrisModelDbRow(*res))
 
     def _fetchEntry(self, modelDbKey: ModelDbKey) -> TetrisModelDbEntry | None:
         with SqliteConnection(self.dbPath) as cur:
@@ -171,7 +167,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
             ).fetchone()
         if res is None:
             return None
-        return TetrisModelDbEntry.fromDbRow(res)
+        return TetrisModelDbEntry.from_orm(TetrisModelDbRow(*res))
 
     def _upsertToTable(self, entry: TetrisModelDbEntry) -> None:
         epochLength = (

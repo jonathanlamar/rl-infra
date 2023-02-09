@@ -53,6 +53,7 @@ class BasePydanticConfig:
     allow_mutation = False
     use_enum_values = True
     json_encoders = {np.ndarray: lambda arr: compressNpArray(arr)}
+    orm_mode = True
 
 
 class SerializableDataClass(BaseModel):

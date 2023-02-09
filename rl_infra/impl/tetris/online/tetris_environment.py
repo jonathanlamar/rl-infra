@@ -55,7 +55,8 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition,
         transition = TetrisTransition(
             state=oldState, action=action, newState=self.currentState, reward=reward, isTerminal=isTerminal
         )
-        self.currentEpochRecord = self.currentEpochRecord.append(transition)
+        if transition.action != TetrisAction.NONE:
+            self.currentEpochRecord = self.currentEpochRecord.append(transition)
         return transition
 
     def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:

@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Literal, Type
 
 import torch
+from pydantic import validator
 from pydantic.utils import GetterDict
 from tetris.config import BOARD_SIZE
 from tetris.game import GameState, KeyPress
@@ -88,3 +89,10 @@ class TetrisTransition(Transition[TetrisState, TetrisAction]):
     newState: TetrisState
     reward: float
     isTerminal: bool
+
+    @validator("state", "newState", pre=True)
+    @classmethod
+    def _parseStateFromJson(cls: Type[TetrisTransition], val: TetrisState | str) -> TetrisState:
+        if isinstance(val, str):
+            return TetrisState.parse_raw(val)
+        return val

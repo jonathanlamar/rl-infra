@@ -1,4 +1,9 @@
+from __future__ import annotations
+
 from enum import Enum
+from typing import Type
+
+from pydantic import validator
 
 from rl_infra.impl.robot.online.robot_client import RobotSensorReading
 from rl_infra.types.online.transition import Action, State, Transition
@@ -23,3 +28,10 @@ class RobotTransition(Transition[RobotState, RobotAction]):
     newState: RobotState
     reward: float
     isTerminal: bool
+
+    @validator("state", "newState", pre=True)
+    @classmethod
+    def _parseStateFromJson(cls: Type[RobotTransition], val: RobotState | str) -> RobotState:
+        if isinstance(val, str):
+            return RobotState.parse_raw(val)
+        return val

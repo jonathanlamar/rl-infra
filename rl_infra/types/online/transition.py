@@ -1,5 +1,8 @@
-from abc import ABC
-from typing import Generic, TypeVar
+from abc import ABC, abstractmethod
+from typing import Generic, NamedTuple, Type, TypeVar
+
+from pydantic import validator
+from typing_extensions import Self
 
 from rl_infra.types.base_types import SerializableDataClass
 
@@ -14,6 +17,14 @@ S = TypeVar("S", bound=State, covariant=False, contravariant=False)
 A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
 
 
+class DataDbRow(NamedTuple):
+    state: str
+    action: str
+    newState: str
+    reward: float
+    isTerminal: bool
+
+
 # This is really an interface, but I have to use ABC here because pydantic does not support mixing in with protocols.
 class Transition(ABC, SerializableDataClass, Generic[S, A]):
     state: S
@@ -21,3 +32,18 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
     newState: S
     reward: float
     isTerminal: bool
+
+    @validator("state", "newState", pre=True)
+    @classmethod
+    @abstractmethod
+    def _parseStateFromJson(cls: Type[Self], val: S | str) -> S:
+        ...
+
+    def toDbRow(self) -> DataDbRow:
+        return DataDbRow(
+            state=self.state.json(),
+            action=self.action,
+            newState=self.newState.json(),
+            reward=self.reward,
+            isTerminal=self.isTerminal,
+        )

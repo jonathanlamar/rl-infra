@@ -64,16 +64,12 @@ class TetrisTrainingService(TrainingService):
         if batchSize <= 0:
             raise ValueError("batchSize must be positive")
         batch = self.dataService.sample(batchSize)
-        nonFinalMask = torch.tensor(
-            tuple(map(lambda s: not s.transition.isTerminal, batch)), device=self.device, dtype=torch.bool
-        )
-        nonFinalNextStates = torch.cat(
-            [elt.transition.newState.toDqnInput() for elt in batch if not elt.transition.isTerminal]
-        )
+        nonFinalMask = torch.tensor(tuple(map(lambda s: not s.isTerminal, batch)), device=self.device, dtype=torch.bool)
+        nonFinalNextStates = torch.cat([elt.newState.toDqnInput() for elt in batch if not elt.isTerminal])
 
-        stateBatch = torch.cat([elt.transition.state.toDqnInput() for elt in batch])
-        actionBatch = torch.tensor([TetrisAgent.possibleActions.index(elt.transition.action) for elt in batch])
-        rewardBatch = torch.tensor([elt.transition.reward for elt in batch])
+        stateBatch = torch.cat([elt.state.toDqnInput() for elt in batch])
+        actionBatch = torch.tensor([TetrisAgent.possibleActions.index(elt.action) for elt in batch])
+        rewardBatch = torch.tensor([elt.reward for elt in batch])
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken

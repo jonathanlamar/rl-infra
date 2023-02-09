@@ -29,8 +29,9 @@ def mainLoop(env: TetrisEnvironment, dataService: TetrisDataService):
     ACTION = TetrisAction.NONE
 
     while not env.gameState.dead:
-        env.step(ACTION)
-        ACTION = TetrisAction.NONE
+        if ACTION != TetrisAction.NONE:
+            env.step(ACTION)
+            ACTION = TetrisAction.NONE
         if time() - env.gameState.lastAdvanceTime > 0.25:
             env.gameState.update(KeyPress.DOWN)
         env.gameState.draw()

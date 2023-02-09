@@ -68,7 +68,6 @@ class TetrisState(State):
     class Config(State.Config):
         """pydantic config class"""
 
-        orm_mode = True
         getter_dict = TetrisGamestateGetterDict
 
 

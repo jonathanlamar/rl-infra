@@ -27,9 +27,7 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
                     action TEXT,
                     new_state TEXT,
                     reward REAL,
-                    is_terminal BOOLEAN,
-                    epoch_num INTEGER,
-                    move_num INTEGER
+                    is_terminal BOOLEAN
                 );"""
             )
 
@@ -53,10 +51,8 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
                 action,
                 new_state,
                 reward,
-                is_terminal,
-                epoch_num,
-                move_num
-            ) VALUES (?, ?, ?, ?, ?, ?, ?);"""
+                is_terminal
+            ) VALUES (?, ?, ?, ?, ?);"""
         values = [entry.toDbRow() for entry in entries]
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
@@ -65,11 +61,7 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
         with SqliteConnection(self.dbPath) as cur:
             allRows = cur.execute(
                 f"""
-                    WITH table1 AS (
-                        SELECT * FROM data
-                        ORDER BY reward DESC, epoch_num DESC, move_num DESC
-                        LIMIT {self.capacity}
-                    )
+                    WITH table1 AS (SELECT * FROM data ORDER BY reward DESC LIMIT {self.capacity})
                     SELECT * FROM table1 ORDER BY RANDOM() LIMIT {batchSize}
                 """
             ).fetchall()

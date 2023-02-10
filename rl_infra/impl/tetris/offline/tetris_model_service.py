@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, NamedTuple, Type
+from typing import Any, NamedTuple
 
 import torch
 from pydantic.utils import GetterDict

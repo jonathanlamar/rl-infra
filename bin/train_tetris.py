@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+import argparse
 import math
-from tetris.utils import KeyPress
+import sys
+from time import sleep
 
 import torch
+from IPython.terminal.embed import embed
+from tetris.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
@@ -18,48 +22,60 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 10
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--print", action="store_true", help="Watch the agent play")
+    parser.add_argument("-t", "--time-delay", type=float, default=0.05, help="Delay between calls to GameState.draw")
+    args = parser.parse_args()
 
-dataService = TetrisDataService()
-modelService = TetrisModelService()
-trainingService = TetrisTrainingService(device=device)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-modelTag = "jonalarmEndToEndTest"
-trainingService.coldStart(modelTag)
-modelService.deployModel()
-agent = TetrisAgent(device=device)
-epochIndex = agent.numEpochsPlayed
-env = TetrisEnvironment(epochNumber=epochIndex)
+    dataService = TetrisDataService()
+    modelService = TetrisModelService()
+    trainingService = TetrisTrainingService(device=device)
 
-for _ in range(NUM_EPOCHS):
-    gameIsOver = False
-    while not gameIsOver:
-        action = agent.chooseAction(env.currentState)
-        transition = env.step(action)
-        env.gameState.update(KeyPress.DOWN)
-        gameIsOver = transition.isTerminal
-    print(
-        f"Epoch {env.currentEpochRecord.epochNumber} done. There were {len(env.currentEpochRecord.moves)} moves, "
-        f"and the final score was {env.currentState.score}."
+    modelTag = "jonalarmEndToEndTest"
+    # trainingService.coldStart(modelTag)
+    modelService.deployModel()
+    agent = TetrisAgent(device=device)
+    epochIndex = agent.numEpochsPlayed
+    env = TetrisEnvironment(epochNumber=epochIndex)
+
+    for _ in range(NUM_EPOCHS):
+        gameIsOver = False
+        while not gameIsOver:
+            action = agent.chooseAction(env.currentState)
+            transition = env.step(action)
+            env.gameState.update(KeyPress.DOWN)
+            if args.print:
+                env.gameState.draw()
+                sleep(args.time_delay)
+            gameIsOver = transition.isTerminal
+        print(
+            f"Epoch {env.currentEpochRecord.epochNumber} done. There were {len(env.currentEpochRecord.moves)} moves, "
+            f"and the final score was {env.currentState.score}."
+        )
+        # TODO: This logic should be part of the agent implementation.
+        # newEpsilon = EPS_END + (EPS_START - EPS_END) * math.exp(-1.0 * len(env.currentGameplayRecord.epochs) / EPS_DECAY)
+        # print(f"Setting epsilon to {newEpsilon}")
+        # agent.epsilon = newEpsilon
+        env.startNewEpoch()
+
+    print("Saving gameplay.")
+    gameplay = env.currentGameplayRecord
+    dataService.pushGameplay(gameplay)
+
+    print("Retraining models")
+    offlinePerformance = trainingService.retrainAndPublish(
+        modelTag=modelTag, version=0, batchSize=128, numBatches=NUM_BATCHES_PER_RETRAIN
     )
-    agent.epsilon = EPS_END + (EPS_START - EPS_END) * math.exp(-1.0 * len(env.currentGameplayRecord.epochs) / EPS_DECAY)
-    env.startNewEpoch()
 
-print("Saving gameplay.")
-gameplay = env.currentGameplayRecord
-dataService.pushGameplay(gameplay)
-
-print("Retraining models")
-offlinePerformance = trainingService.retrainAndPublish(
-    modelTag=modelTag, version=0, batchSize=128, numBatches=NUM_BATCHES_PER_RETRAIN
-)
-
-print("Updating metrics for model")
-onlinePerformance = gameplay.computeOnlineMetrics()
-print(f"Online performance: {onlinePerformance}.  Offline performance: {offlinePerformance}")
-modelService.updateModel(
-    ModelDbKey(tag=modelTag, version=0),
-    numEpochsPlayed=NUM_EPOCHS,
-    onlinePerformance=onlinePerformance,
-    offlinePerformance=offlinePerformance,
-)
+    print("Updating metrics for model")
+    onlinePerformance = gameplay.computeOnlineMetrics()
+    print(f"Online performance: {onlinePerformance}.  Offline performance: {offlinePerformance}")
+    modelService.updateModel(
+        ModelDbKey(tag=modelTag, version=0),
+        numEpochsPlayed=NUM_EPOCHS,
+        onlinePerformance=onlinePerformance,
+        offlinePerformance=offlinePerformance,
+    )

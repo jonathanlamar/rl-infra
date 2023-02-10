@@ -59,11 +59,25 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
 
     def sample(self, batchSize: int) -> list[TetrisTransition]:
         with SqliteConnection(self.dbPath) as cur:
+            numZeros = cur.execute(f"select count(*) from data where reward=0 limit {self.capacity}").fetchone()[0]
+            numNonZeros = cur.execute("select count(*) from data where reward<>0").fetchone()[0]
+            ratio = numZeros // numNonZeros
             allRows = cur.execute(
-                f"""
-                    WITH table1 AS (SELECT * FROM data ORDER BY reward DESC LIMIT {self.capacity})
-                    SELECT * FROM table1 ORDER BY RANDOM() LIMIT {batchSize}
-                """
+                f"""with RECURSIVE cte(x) AS (
+                    SELECT 1 UNION ALL SELECT x + 1 FROM cte WHERE x < {ratio}
+                ),
+                nonzeros as (
+                    select * from data where reward <> 0
+                ),
+                nonzeros_repeated as (
+                    select nz.* from nonzeros nz cross join cte c
+                ),
+                zeros as (
+                    select * from data where reward = 0 order by rowid desc limit {self.capacity}
+                )
+                select * from (
+                    select * from nonzeros_repeated union all select * from zeros
+                ) order by random() limit {batchSize}"""
             ).fetchall()
         if len(allRows) < batchSize:
             raise ValueError("Not enough results for batch.  Reduce batch size or collect more data.")

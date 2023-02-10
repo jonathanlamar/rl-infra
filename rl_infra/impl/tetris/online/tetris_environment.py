@@ -21,7 +21,6 @@ class TetrisOnlineMetrics(Metrics):
 
 
 class TetrisEpochRecord(EpochRecord[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
-    epochNumber: int
     moves: list[TetrisTransition]
 
     def computeOnlineMetrics(self) -> TetrisOnlineMetrics:
@@ -39,11 +38,11 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition,
     currentGameplayRecord: TetrisGameplayRecord
     gameState: GameState
 
-    def __init__(self, epochNumber: int = 0) -> None:
+    def __init__(self) -> None:
         self.gameState = GameState()
         self.currentState = TetrisState.from_orm(self.gameState)
         self.currentGameplayRecord = TetrisGameplayRecord(epochs=[])
-        self.currentEpochRecord = TetrisEpochRecord(epochNumber=epochNumber, moves=[])
+        self.currentEpochRecord = TetrisEpochRecord(moves=[])
 
     def step(self, action: TetrisAction) -> TetrisTransition:
         oldState = self.currentState
@@ -68,4 +67,4 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition,
         self.gameState = GameState()
         self.currentState = TetrisState.from_orm(self.gameState)
         self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
-        self.currentEpochRecord = TetrisEpochRecord(epochNumber=self.currentEpochRecord.epochNumber + 1, moves=[])
+        self.currentEpochRecord = TetrisEpochRecord(moves=[])

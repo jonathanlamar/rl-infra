@@ -46,6 +46,6 @@ if __name__ == "__main__":
     dataService = TetrisDataService()
 
     with Listener(on_press=onPress) as listener:
-        env = TetrisEnvironment(epochNumber=0)
+        env = TetrisEnvironment()
         mainLoop(env, dataService)
     print("You lose!")

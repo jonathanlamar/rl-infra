@@ -16,7 +16,7 @@ class TrainingService(Protocol[MService, DService, Model, OfflineMetrics]):
     def modelFactory(self) -> Model:
         ...
 
-    def coldStart(self, modelTag: str) -> None:
+    def coldStart(self, modelTag: str) -> int:
         ...
 
     def retrainAndPublish(self, modelTag: str, version: int, numBatches: int) -> OfflineMetrics:

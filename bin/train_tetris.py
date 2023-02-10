@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import math
+from tetris.utils import KeyPress
 
 import torch
 
@@ -10,7 +11,7 @@ from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
 from rl_infra.types.offline.model_service import ModelDbKey
 
-NUM_EPOCHS = 0
+NUM_EPOCHS = 10
 NUM_BATCHES_PER_RETRAIN = 100
 
 EPS_START = 0.9
@@ -35,6 +36,7 @@ for _ in range(NUM_EPOCHS):
     while not gameIsOver:
         action = agent.chooseAction(env.currentState)
         transition = env.step(action)
+        env.gameState.update(KeyPress.DOWN)
         gameIsOver = transition.isTerminal
     print(
         f"Epoch {env.currentEpochRecord.epochNumber} done. There were {len(env.currentEpochRecord.moves)} moves, "

@@ -47,7 +47,7 @@ Entry = TypeVar("Entry", bound=ModelDbEntry, covariant=True)
 
 
 class ModelService(Protocol[Model, Entry, OnlineMetrics, OfflineMetrics]):
-    def publishNewModel(self, modelTag: str, actorModel: Model | None = None, criticModel: Model | None = None) -> None:
+    def publishNewModel(self, modelTag: str, actorModel: Model | None = None, criticModel: Model | None = None) -> int:
         ...
 
     def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
@@ -56,7 +56,7 @@ class ModelService(Protocol[Model, Entry, OnlineMetrics, OfflineMetrics]):
     def getModelEntry(self, modelTag: str, version: int) -> Entry:
         ...
 
-    def deployModel(self) -> None:
+    def deployModel(self, modelTag: str | None = None, version: int | None = None) -> int:
         ...
 
     def updateModel(

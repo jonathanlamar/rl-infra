@@ -14,7 +14,6 @@ M = TypeVar("M", bound=Metrics)
 
 
 class EpochRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):
-    epochNumber: int
     moves: list[T]
 
     @abstractmethod
@@ -22,7 +21,7 @@ class EpochRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):
         ...
 
     def append(self, transition: T) -> Self:
-        return self.__class__(epochNumber=self.epochNumber, moves=self.moves + [transition])
+        return self.__class__(moves=self.moves + [transition])
 
 
 class GameplayRecord(ABC, SerializableDataClass, Generic[S, A, T, M]):

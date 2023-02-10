@@ -1,5 +1,6 @@
 import random
 from typing import Protocol, TypeVar
+from rl_infra.types.offline.model_service import ModelDbKey
 
 from rl_infra.types.online.transition import Action, State
 
@@ -9,6 +10,8 @@ A = TypeVar("A", bound=Action, covariant=True, contravariant=False)
 
 class Agent(Protocol[S, A]):
     epsilon: float
+    numEpochsPlayed: int
+    dbKey: ModelDbKey
 
     def chooseAction(self, state: S) -> A:
         """Choose action in epsilon-greedy manner, according to policy"""

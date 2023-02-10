@@ -107,13 +107,15 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
 
     def publishNewModel(
         self, modelTag: str, actorModel: DeepQNetwork | None = None, criticModel: DeepQNetwork | None = None
-    ) -> None:
+    ) -> int:
         maybeExistingModelKey = self.getLatestVersionKey(modelTag)
         if maybeExistingModelKey is not None:
-            version = maybeExistingModelKey.version
-        version = 0
+            version = maybeExistingModelKey.version + 1
+        else:
+            version = 0
         newModelKey = ModelDbKey(tag=modelTag, version=version)
         self.updateModel(newModelKey, actorModel=actorModel, criticModel=criticModel)
+        return version
 
     def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
         with SqliteConnection(self.dbPath) as cur:
@@ -131,13 +133,14 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
             raise KeyError(f"Could not find model with tag {modelTag} and version {version}")
         return entry
 
-    def deployModel(self) -> None:
-        entry = self._getBestModel()
+    def deployModel(self, modelTag: str | None = None, version: int | None = None) -> int:
+        entry = self._getBestModel(modelTag, version)
         if not os.path.exists(self.deployModelRootPath):
             os.makedirs(self.deployModelRootPath)
         os.system(f"cp {entry.actorLocation} {self.deployModelWeightsPath}")
         with open(self.deployModelEntryPath, "w") as f:
             f.write(entry.json())
+        return entry.dbKey.version
 
     def updateModel(
         self,
@@ -173,9 +176,23 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
 
-    def _getBestModel(self) -> TetrisModelDbEntry:
-        with SqliteConnection(self.dbPath) as cur:
-            res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
+    def _getBestModel(self, modelTag: str | None = None, version: int | None = None) -> TetrisModelDbEntry:
+        if modelTag is not None:
+            if version is not None:
+                with SqliteConnection(self.dbPath) as cur:
+                    res = cur.execute(
+                        f"""SELECT * FROM models WHERE tag = '{modelTag}' AND version = {version};"""
+                    ).fetchone()
+            else:
+                with SqliteConnection(self.dbPath) as cur:
+                    res = cur.execute(
+                        f"SELECT * FROM models WHERE tag='{modelTag}' ORDER BY avg_epoch_length DESC;"
+                    ).fetchone()
+        else:
+            if version is not None:
+                raise ValueError("Version cannot be specified without tag")
+            with SqliteConnection(self.dbPath) as cur:
+                res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
         if res is None:
             raise KeyError("No best model found")
         return TetrisModelDbEntry.from_orm(TetrisModelDbRow(*res))

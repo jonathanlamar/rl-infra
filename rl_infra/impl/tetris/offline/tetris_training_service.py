@@ -30,8 +30,8 @@ class TetrisTrainingService(TrainingService):
     def modelFactory(self) -> DeepQNetwork:
         return DeepQNetwork(**self.modelInitArgs)
 
-    def coldStart(self, modelTag: str):
-        self.modelService.publishNewModel(
+    def coldStart(self, modelTag: str) -> int:
+        return self.modelService.publishNewModel(
             modelTag=modelTag,
             actorModel=self.modelFactory(),
             criticModel=self.modelFactory(),

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
-from typing import NamedTuple
+from typing import Any, NamedTuple, Type
 
 import torch
+from pydantic.utils import GetterDict
 
 from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
@@ -43,6 +44,20 @@ class TetrisOfflineMetrics(Metrics):
         )
 
 
+class TetrisModelEntryGetterDict(GetterDict):
+    """Special logic for parsing ModelDbRow"""
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if isinstance(self._obj, TetrisModelDbRow):
+            if key == "dbKey":
+                return ModelDbKey.from_orm(self._obj)
+            if key == "onlinePerformance":
+                return TetrisOnlineMetrics.from_orm(self._obj)
+            if key == "offlinePerformance":
+                return TetrisOfflineMetrics.from_orm(self._obj)
+        return super().get(key, default)
+
+
 class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]):
     dbKey: ModelDbKey
     actorLocation: str
@@ -51,6 +66,11 @@ class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]
     numBatchesTrained: int = 0
     onlinePerformance: TetrisOnlineMetrics = TetrisOnlineMetrics()
     offlinePerformance: TetrisOfflineMetrics = TetrisOfflineMetrics()
+
+    class Config(ModelDbEntry.Config):
+        """pydantic config class"""
+
+        getter_dict = TetrisModelEntryGetterDict
 
 
 class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOnlineMetrics, TetrisOfflineMetrics]):

@@ -105,3 +105,7 @@ if __name__ == "__main__":
                 onlinePerformance=onlinePerformance,
                 offlinePerformance=offlinePerformance,
             )
+
+            version = modelService.deployModel(args.model_tag, args.version)
+            print(f"Deployed version {version} of model {args.model_tag}")
+            agent = TetrisAgent(device=device)

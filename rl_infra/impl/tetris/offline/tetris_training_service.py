@@ -7,9 +7,10 @@ from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
+from rl_infra.impl.tetris.online.tetris_transition import TetrisTransition
 from rl_infra.types.offline.training_service import TrainingService
 
-GAMMA = 0.25
+GAMMA = 0.1
 TAU = 0.005
 LR = 0.1
 MOMENTUM = 0.9
@@ -52,24 +53,42 @@ class TetrisTrainingService(TrainingService):
         critic = self.modelFactory()
         critic.load_state_dict(torch.load(entry.criticLocation))
 
-        losses = []
+        trainingLosses = []
         for _ in range(numBatches):
-            actor, loss = self._performBackpropOnBatch(actor, critic, batchSize)
-            losses.append(loss)
+            optimizer = torch.optim.SGD(actor.parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WEIGHT_DECAY)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+
+            actor, trainLoss = self._performBackpropOnBatch(actor, critic, batchSize, optimizer)
+            trainingLosses.append(trainLoss)
+
+            scheduler.step(trainLoss)
+
             critic = self._softUpdateCritic(actor, critic)
 
-        enumLosses = list([(num + entry.numBatchesTrained, loss) for num, loss in enumerate(losses)])
+        enumLosses = list([(num + entry.numBatchesTrained, loss) for num, loss in enumerate(trainingLosses)])
         self.modelService.pushBatchLosses(entry.dbKey, enumLosses)
         self.modelService.updateModel(entry.dbKey, actorModel=actor, criticModel=critic, numBatchesTrained=numBatches)
 
-        return TetrisOfflineMetrics.fromList(losses)
+        return TetrisOfflineMetrics.fromList(trainingLosses)
 
     def _performBackpropOnBatch(
-        self, actor: DeepQNetwork, critic: DeepQNetwork, batchSize: int
+            self, actor: DeepQNetwork, critic: DeepQNetwork, batchSize: int, optimizer: torch.optim.Optimizer
     ) -> tuple[DeepQNetwork, float]:
         if batchSize <= 0:
             raise ValueError("batchSize must be positive")
         batch = self.dataService.sample(batchSize)
+        loss = self._getBatchLoss(batch, actor, critic)
+
+        # Optimize the model
+        optimizer.zero_grad()
+        loss.backward()
+        # In-place gradient clipping
+        torch.nn.utils.clip_grad.clip_grad_value_(actor.parameters(), 100)
+        optimizer.step()
+
+        return actor, loss.item()
+
+    def _getBatchLoss(self, batch: list[TetrisTransition], actor: DeepQNetwork, critic: DeepQNetwork) -> torch.Tensor:
         nonFinalMask = torch.tensor(tuple(map(lambda s: not s.isTerminal, batch)), device=self.device, dtype=torch.bool)
         nonFinalNextStates = torch.cat([elt.newState.toDqnInput() for elt in batch if not elt.isTerminal])
 
@@ -87,7 +106,7 @@ class TetrisTrainingService(TrainingService):
         # on the "older" target_net; selecting their best reward with max(1)[0].
         # This is merged based on the mask, such that we'll have either the expected
         # state value or 0 in case the state was final.
-        nextStateValues = torch.zeros(batchSize, device=self.device)
+        nextStateValues = torch.zeros(len(batch), device=self.device)
         with torch.no_grad():
             nextStateValues[nonFinalMask] = critic(nonFinalNextStates).max(1)[0]
 
@@ -96,17 +115,7 @@ class TetrisTrainingService(TrainingService):
 
         # Compute Huber loss
         criterion = torch.nn.L1Loss()
-        loss = criterion(stateActionValues, expectedStateActionValues)
-
-        # Optimize the model
-        optimizer = torch.optim.SGD(actor.parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WEIGHT_DECAY)
-        optimizer.zero_grad()
-        loss.backward()
-        # In-place gradient clipping
-        torch.nn.utils.clip_grad.clip_grad_value_(actor.parameters(), 100)
-        optimizer.step()
-
-        return actor, loss.item()
+        return criterion(stateActionValues, expectedStateActionValues)
 
     def _softUpdateCritic(self, actor: DeepQNetwork, critic: DeepQNetwork) -> DeepQNetwork:
         # Soft update of the target network's weights

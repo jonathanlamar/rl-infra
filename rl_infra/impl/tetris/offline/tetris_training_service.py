@@ -9,6 +9,12 @@ from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.types.offline.training_service import TrainingService
 
+GAMMA = 0.25
+TAU = 0.005
+LR = 0.1
+MOMENTUM = 0.9
+WEIGHT_DECAY = 0
+
 
 class TetrisTrainingService(TrainingService):
     modelService: TetrisModelService
@@ -86,16 +92,14 @@ class TetrisTrainingService(TrainingService):
             nextStateValues[nonFinalMask] = critic(nonFinalNextStates).max(1)[0]
 
         # Compute expected Q values
-        # TODO: Not sure where to stash these constants yet.  Just putting them here for now.
-        GAMMA = 0.99
         expectedStateActionValues = (nextStateValues * GAMMA) + rewardBatch
 
         # Compute Huber loss
-        criterion = torch.nn.SmoothL1Loss()
+        criterion = torch.nn.L1Loss()
         loss = criterion(stateActionValues, expectedStateActionValues)
 
         # Optimize the model
-        optimizer = torch.optim.AdamW(actor.parameters(), lr=1e-4, amsgrad=True)
+        optimizer = torch.optim.SGD(actor.parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WEIGHT_DECAY)
         optimizer.zero_grad()
         loss.backward()
         # In-place gradient clipping
@@ -104,10 +108,9 @@ class TetrisTrainingService(TrainingService):
 
         return actor, loss.item()
 
-    def _softUpdateCritic(self, actor, critic) -> DeepQNetwork:
+    def _softUpdateCritic(self, actor: DeepQNetwork, critic: DeepQNetwork) -> DeepQNetwork:
         # Soft update of the target network's weights
         # θ′ ← τ θ + (1 −τ )θ′
-        TAU = 0.005
         criticStateDict = critic.state_dict()
         actorStateDict = actor.state_dict()
         for key in actorStateDict:

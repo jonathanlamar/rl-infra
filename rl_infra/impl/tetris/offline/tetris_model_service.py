@@ -27,20 +27,20 @@ class TetrisModelDbRow(NamedTuple):
 
 
 class TetrisOfflineMetrics(Metrics):
-    avgHuberLoss: float | None = None
+    avgTrainingLoss: float | None = None
 
     @classmethod
-    def fromList(cls, vals: list[float]) -> TetrisOfflineMetrics:
-        if not vals:
+    def fromList(cls, losses: list[float]) -> TetrisOfflineMetrics:
+        if not losses:
             return TetrisOfflineMetrics()
-        avgLoss = sum(vals) / len(vals)
-        return cls(avgHuberLoss=avgLoss)
+        avgLoss = sum(losses) / len(losses)
+        return cls(avgTrainingLoss=avgLoss)
 
     def updateWithNewValues(self, other: TetrisOfflineMetrics) -> TetrisOfflineMetrics:
         """For each metric, compute average.  This results in an exponential recency weighted average."""
 
         return TetrisOfflineMetrics(
-            avgHuberLoss=TetrisOfflineMetrics.avgWithoutNone(self.avgHuberLoss, other.avgHuberLoss),
+            avgTrainingLoss=TetrisOfflineMetrics.avgWithoutNone(self.avgTrainingLoss, other.avgTrainingLoss),
         )
 
 
@@ -214,7 +214,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisModelDbEntry, TetrisOn
             entry.onlinePerformance.avgEpochScore if entry.onlinePerformance.avgEpochScore is not None else "NULL"
         )
         huberLoss = (
-            entry.offlinePerformance.avgHuberLoss if entry.offlinePerformance.avgHuberLoss is not None else "NULL"
+            entry.offlinePerformance.avgTrainingLoss if entry.offlinePerformance.avgTrainingLoss is not None else "NULL"
         )
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(

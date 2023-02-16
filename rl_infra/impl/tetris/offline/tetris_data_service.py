@@ -59,26 +59,71 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
 
     def sample(self, batchSize: int) -> list[TetrisTransition]:
         with SqliteConnection(self.dbPath) as cur:
-            numZeros = cur.execute(f"select count(*) from data where reward=0 limit {self.capacity}").fetchone()[0]
-            numNonZeros = cur.execute("select count(*) from data where reward<>0").fetchone()[0]
-            ratio = numZeros // numNonZeros
-            allRows = cur.execute(
-                f"""with RECURSIVE cte(x) AS (
-                    SELECT 1 UNION ALL SELECT x + 1 FROM cte WHERE x < {ratio}
+            numPositive = cur.execute("select count(*) from data where reward > 0").fetchone()[0]
+            numZeros = cur.execute(f"select count(*) from data where reward = 0 limit {self.capacity}").fetchone()[0]
+            numNegative = cur.execute("select count(*) from data where reward < 0").fetchone()[0]
+            try:
+                posRatio = numZeros // numPositive
+                negRatio = numZeros // numNegative
+            except ZeroDivisionError:
+                raise ValueError(
+                    "No results with either positive or negative reward.  Collect more data before training."
+                )
+            sampleSize = batchSize // 3
+            remainder = batchSize % 3
+            posRows = cur.execute(
+                f"""
+                with recursive cte(x) AS (
+                    select 1 union all select x + 1 from cte where x < {posRatio}
                 ),
-                nonzeros as (
-                    select * from data where reward <> 0
+                positives as (
+                    select * from data where reward > 0
                 ),
-                nonzeros_repeated as (
-                    select nz.* from nonzeros nz cross join cte c
+                positives_repeated as (
+                    select p.* from positives p cross join cte c
+                )
+                select * from positives_repeated order by random() limit {sampleSize + remainder};
+                """
+            ).fetchall()
+            negRows = cur.execute(
+                f"""
+                with recursive cte(x) AS (
+                    select 1 union all select x + 1 from cte where x < {negRatio}
                 ),
-                zeros as (
+                negatives as (
+                    select * from data where reward < 0
+                ),
+                negatives_repeated as (
+                    select n.* from negatives n cross join cte c
+                )
+                select * from negatives_repeated order by random() limit {sampleSize};
+                """
+            ).fetchall()
+            zeroRows = cur.execute(
+                f"""
+                with zeros as (
                     select * from data where reward = 0 order by rowid desc limit {self.capacity}
                 )
-                select * from (
-                    select * from nonzeros_repeated union all select * from zeros
-                ) order by random() limit {batchSize}"""
+                select * from zeros order by random() limit {sampleSize};
+                """
             ).fetchall()
+        allRows = posRows + negRows + zeroRows
         if len(allRows) < batchSize:
             raise ValueError("Not enough results for batch.  Reduce batch size or collect more data.")
         return [TetrisTransition.from_orm(DataDbRow(*row)) for row in random.sample(allRows, batchSize)]
+
+    def keepNewRowsDeleteOld(self, sgn: int = 0, numToKeep: int = 1000) -> None:
+        if sgn not in [-1, 0, 1]:
+            raise KeyError("sgn must be one of {-1, 0, 1}")
+        with SqliteConnection(self.dbPath) as cur:
+            cur.execute(
+                f"""
+                with rows_to_keep as (
+                    select rowid from data
+                    where sign(reward) = {sgn}
+                    order by rowid desc
+                    limit {numToKeep}
+                )
+                delete from data where sign(reward) = {sgn} and rowid not in rows_to_keep;
+                """
+            )

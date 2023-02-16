@@ -27,7 +27,18 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
-        "-e", "--epochs", type=int, default=10, help="Number of epochs to play.  Retraining occurs every 10 batches."
+        "-e",
+        "--epochs",
+        type=int,
+        default=10,
+        help="Number of epochs to play.  Retraining occurs every 10 batches by default.",
+    )
+    parser.add_argument(
+        "-i",
+        "--retrain-interval",
+        type=int,
+        default=10,
+        help="How often (in epochs) to retrain the model.  Set to zero to skip retraining entirely.",
     )
     parser.add_argument(
         "-r", "--retrain-batches", type=int, default=10, help="Number of batches to retrain on per retraining session."
@@ -66,7 +77,12 @@ if __name__ == "__main__":
     version = modelService.deployModel(args.model_tag, args.version)
     print(f"Deployed version {version} of model {args.model_tag}")
 
+    print("Loading deployed model")
     agent = TetrisAgent(device=device)
+    print(
+        f"Model loaded.  Agent has played {agent.numEpochsPlayed} epochs.  "
+        + f"Using epsilon-greedy choice with epsilon = {agent.epsilon}."
+    )
     env = TetrisEnvironment()
 
     for _ in range(args.epochs):
@@ -86,7 +102,7 @@ if __name__ == "__main__":
         env.startNewEpoch()
         agent.startNewEpoch()
 
-        if agent.numEpochsPlayed % 10 == 0:
+        if args.retrain_interval != 0 and agent.numEpochsPlayed % args.retrain_interval == 0:
             print("Saving gameplay.")
             gameplay = env.currentGameplayRecord
             dataService.pushGameplay(gameplay)
@@ -96,12 +112,16 @@ if __name__ == "__main__":
                 modelTag=agent.dbKey.tag, version=agent.dbKey.version, batchSize=128, numBatches=args.retrain_batches
             )
 
+            print("Deleting old training examples")
+            dataService.keepNewRowsDeleteOld(sgn=0, numToKeep=1000)
+            dataService.keepNewRowsDeleteOld(sgn=-1, numToKeep=1000)
+
             print("Updating metrics for model")
             onlinePerformance = gameplay.computeOnlineMetrics()
             print(f"Online performance: {onlinePerformance}.  Offline performance: {offlinePerformance}")
             modelService.updateModel(
                 agent.dbKey,
-                numEpochsPlayed=args.epochs,
+                numEpochsPlayed=args.retrain_interval,
                 onlinePerformance=onlinePerformance,
                 offlinePerformance=offlinePerformance,
             )

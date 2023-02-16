@@ -14,7 +14,7 @@ class DeepQNetwork(nn.Module):
         arrayWidth: int,
         numOutputs: int,
         device: torch.device,
-        kernelSize: int = 5,
+        kernelSize: int = 4,
         stride: int = 1,
     ) -> None:
         super(DeepQNetwork, self).__init__()
@@ -29,11 +29,14 @@ class DeepQNetwork(nn.Module):
         self.bn2 = nn.BatchNorm2d(32)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=kernelSize, stride=stride)
         self.bn3 = nn.BatchNorm2d(32)
+        self.conv4 = nn.Conv2d(32, 32, kernel_size=kernelSize, stride=stride)
+        self.bn4 = nn.BatchNorm2d(32)
 
-        convw = self._conv2dSizeOut(self._conv2dSizeOut(self._conv2dSizeOut(arrayWidth)))
-        convh = self._conv2dSizeOut(self._conv2dSizeOut(self._conv2dSizeOut(arrayHeight)))
-        linearInputSize = convw * convh * 32
-        self.head = nn.Linear(linearInputSize, numOutputs)
+        convw = self._conv2dSizeOut(self._conv2dSizeOut(self._conv2dSizeOut(self._conv2dSizeOut(arrayWidth))))
+        convh = self._conv2dSizeOut(self._conv2dSizeOut(self._conv2dSizeOut(self._conv2dSizeOut(arrayHeight))))
+        self.linear1 = nn.Linear(convw * convh * 32, 16)
+        self.linear2 = nn.Linear(16, 8)
+        self.linear3 = nn.Linear(8, numOutputs)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -43,8 +46,9 @@ class DeepQNetwork(nn.Module):
         x = relu(self.bn1(self.conv1(x)))
         x = relu(self.bn2(self.conv2(x)))
         x = relu(self.bn3(self.conv3(x)))
+        x = relu(self.bn4(self.conv4(x)))
 
-        return self.head(x.view(x.size(0), -1))
+        return self.linear3(self.linear2(self.linear1(x.view(x.size(0), -1))))
 
     def _conv2dSizeOut(self, size: int):
         # Number of Linear input connections depends on output of conv2d layers

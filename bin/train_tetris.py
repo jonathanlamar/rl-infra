@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-from textwrap import dedent
 from time import sleep
 
 import torch
@@ -20,24 +19,15 @@ def getParser() -> argparse.ArgumentParser:
         "-c",
         "--cold-start",
         action="store_true",
-        help=dedent(
-            """
-            Whether to create new model weights from scratch.
-            These will be stored as the latest version of the model tag used.
-            """
-        ),
+        help="""Whether to create new model weights from scratch. These will be stored as the latest version of the
+        model tag used.""",
     )
     parser.add_argument(
         "-t",
         "--model-tag",
         type=str,
         default="throwaway",
-        help=dedent(
-            """
-            Which model tag to train.  Will always load the latest version unless --version
-            is used.
-            """
-        ),
+        help="Which model tag to train.  Will always load the latest version unless --version is used.",
     )
     parser.add_argument(
         "-v", "--version", type=int, help="Model version to train.  Will default to the latest version if blank."
@@ -47,24 +37,14 @@ def getParser() -> argparse.ArgumentParser:
         "--num-epochs",
         type=int,
         default=10,
-        help=dedent(
-            """
-            Number of epochs to play (default 10).  Retraining occurs every RETRAIN_INTERVAL
-            batches.
-            """
-        ),
+        help="Number of epochs to play (default 10).  Retraining occurs every RETRAIN_INTERVAL batches.",
     )
     parser.add_argument(
         "-i",
         "--retrain-interval",
         type=int,
         default=10,
-        help=dedent(
-            """
-            How often (in epochs) to retrain the model (default 10).  Set to zero to skip
-            retraining entirely.
-            """
-        ),
+        help="How often (in epochs) to retrain the model (default 10).  Set to zero to skip retraining entirely.",
     )
     parser.add_argument(
         "-r", "--retrain-batches", type=int, default=10, help="Number of batches per retraining session (default 10)."
@@ -74,36 +54,23 @@ def getParser() -> argparse.ArgumentParser:
         "--batch-size",
         type=int,
         default=128,
-        help=dedent(
-            """
-            Number of transitions per batch (default 128).  Transitions will be selected at
-            random from recent gameplay and distributed such that examples with positive,
-            zero, and negative reward are roughly equal.
-            """
-        ),
+        help="""Number of transitions per batch (default 128).  Transitions will be selected at random from recent
+        gameplay and distributed such that examples with positive, zero, and negative reward are roughly equal.""",
     )
     parser.add_argument(
         "-p",
         "--print",
         action="store_true",
-        help=dedent(
-            """
-            Whether to show agent gameplay with periodic calls to GameState.draw.  Leave
-            blank to train without printing (much faster)
-            """
-        ),
+        help="""Whether to show agent gameplay with periodic calls to GameState.draw.  Leave blank to train without
+        printing (much faster)""",
     )
     parser.add_argument(
         "-g",
         "--greedy-policy",
         action="store_true",
-        help=dedent(
-            """
-            Whether to use a greedy policy in action selection which always chooses the
-            action with highest value. Leave blank to use an epsilon-greedy policy with
-            exponentially decaying epsilon as a function of the number of epochs played.
-            """
-        ),
+        help="""Whether to use a greedy policy in action selection which always chooses the action with highest value.
+        Leave blank to use an epsilon-greedy policy with exponentially decaying epsilon as a function of the number of
+        epochs played.""",
     )
 
     return parser
@@ -203,9 +170,9 @@ if __name__ == "__main__":
     env = TetrisEnvironment()
 
     for _ in range(args.num_epochs):
-        playEpoch(agent, env, args)
+        agent, env = playEpoch(agent, env, args)
+        updateGamePlayData(env, dataService, modelService, args)
 
         if args.retrain_interval != 0 and agent.numEpochsPlayed % args.retrain_interval == 0:
-            updateGamePlayData(env, dataService, modelService, args)
             retrainModelAndUpdateMetrics(agent, args)
             agent = deployAndLoadModel(args)

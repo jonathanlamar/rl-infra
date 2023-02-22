@@ -80,7 +80,7 @@ class RobotService:
         return Response(response=resp, status=200)
 
     def sendLightColorReading(self):
-        rawColors = self.lightColorSensor.safe_raw_colors()
+        rawColors = self.lightColorSensor.safe_raw_colors()  # pyright: ignore
         resp = compressNpArray(np.asarray(rawColors))
 
         return jsonify(resp)

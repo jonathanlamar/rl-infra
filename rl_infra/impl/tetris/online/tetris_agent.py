@@ -14,15 +14,11 @@ from rl_infra.impl.tetris.online.config import (
     MODEL_WEIGHTS_PATH,
 )
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
-from rl_infra.types.offline.model_service import ModelDbKey
 from rl_infra.types.online.agent import Agent
 
 
 class TetrisAgent(Agent[TetrisState, TetrisAction]):
-    epsilon: float
     policy: DeepQNetwork
-    numEpochsPlayed: int
-    dbKey: ModelDbKey
     # Make sure the models always see the same order
     possibleActions = list(sorted(TetrisAction))
 
@@ -49,7 +45,7 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
             # t.max(1) will return largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            prediction = self.policy(input).max(1)[1].view(1).numpy()[0]
+            prediction: int = self.policy(input).max(1)[1].view(1).numpy()[0]
         return self.possibleActions[prediction]
 
     def chooseRandomAction(self) -> TetrisAction:

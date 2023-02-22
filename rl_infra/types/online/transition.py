@@ -13,8 +13,8 @@ class State(SerializableDataClass):
 
 
 Action = str
-S = TypeVar("S", bound=State, covariant=False, contravariant=False)
-A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
+S = TypeVar("S", bound=State, covariant=True)
+A = TypeVar("A", bound=Action, covariant=True)
 
 
 class DataDbRow(NamedTuple):

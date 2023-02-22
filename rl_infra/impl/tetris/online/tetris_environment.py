@@ -20,22 +20,17 @@ class TetrisOnlineMetrics(Metrics):
         )
 
 
-class TetrisEpochRecord(EpochRecord[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
-    moves: list[TetrisTransition]
-
+class TetrisEpochRecord(EpochRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
     def computeOnlineMetrics(self) -> TetrisOnlineMetrics:
         finalScore = max([move.newState.score for move in self.moves])
         return TetrisOnlineMetrics(avgEpochLength=len(self.moves), avgEpochScore=finalScore)
 
 
-class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
-    epochs: list[TetrisEpochRecord]
+class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
+    pass
 
 
-class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
-    currentState: TetrisState
-    currentEpochRecord: TetrisEpochRecord
-    currentGameplayRecord: TetrisGameplayRecord
+class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetrics]):
     gameState: GameState
 
     def __init__(self) -> None:

@@ -37,7 +37,8 @@ def getParser() -> argparse.ArgumentParser:
         "--num-epochs",
         type=int,
         default=10,
-        help="Number of epochs to play (default 10).  Retraining occurs every RETRAIN_INTERVAL batches.",
+        help="""Number of epochs to play (default 10).  If NUM_EPOCHS == 0, then gameplay is skpped and the model is
+        trained for RETRAIN_BATCHES batches.  Otherwise, retraining occurs every RETRAIN_INTERVAL batches.""",
     )
     parser.add_argument(
         "-i",
@@ -171,8 +172,13 @@ if __name__ == "__main__":
 
     for _ in range(args.num_epochs):
         agent, env = playEpoch(agent, env, args)
-        updateGamePlayData(env, dataService, modelService, args)
 
         if args.retrain_interval != 0 and agent.numEpochsPlayed % args.retrain_interval == 0:
+            updateGamePlayData(env, dataService, modelService, args)
             retrainModelAndUpdateMetrics(agent, args)
             agent = deployAndLoadModel(args)
+
+    if args.num_epochs > 0:
+        updateGamePlayData(env, dataService, modelService, args)
+    else:
+        retrainModelAndUpdateMetrics(agent, args)

@@ -4,7 +4,9 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Literal, Type
 
+import numpy as np
 import torch
+from numpy.typing import NDArray
 from pydantic import validator
 from pydantic.utils import GetterDict
 from tetris.config import BOARD_SIZE
@@ -44,7 +46,7 @@ class TetrisGamestateGetterDict(GetterDict):
 
     def get(self, key: str, default: Any = None) -> Any:
         if isinstance(self._obj, GameState) and key == "board":
-            board = deepcopy(self._obj.board)
+            board: NDArray[np.uint8] = deepcopy(self._obj.board)
             piece = self._obj.activePiece
             for idx in piece.squares:
                 # Using 2 to encode meaning into the pixels of the active piece
@@ -84,12 +86,6 @@ class TetrisAction(Action, Enum):
 
 
 class TetrisTransition(Transition[TetrisState, TetrisAction]):
-    state: TetrisState
-    action: TetrisAction
-    newState: TetrisState
-    reward: float
-    isTerminal: bool
-
     @validator("state", "newState", pre=True)
     @classmethod
     def _parseStateFromJson(cls: Type[TetrisTransition], val: TetrisState | str) -> TetrisState:

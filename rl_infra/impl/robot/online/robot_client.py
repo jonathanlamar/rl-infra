@@ -40,8 +40,8 @@ class RobotClient:
         motionDetected = RobotClient._getMotion()
 
         return RobotSensorReading(
-            image=img,
-            distanceSweep=sensorSweep,
+            image=img,  # pyright: ignore
+            distanceSweep=sensorSweep,  # pyright: ignore
             motionDetected=motionDetected,
         )
 

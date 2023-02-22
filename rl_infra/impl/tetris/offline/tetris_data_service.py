@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import random
+from typing import Sequence
 
 from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
-from rl_infra.impl.tetris.online.tetris_environment import TetrisEpochRecord, TetrisGameplayRecord, TetrisOnlineMetrics
+from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
 from rl_infra.types.offline import DataService, SqliteConnection
-from rl_infra.types.online.transition import DataDbRow
+from rl_infra.types.online.environment import EpochRecord, GameplayRecord
+from rl_infra.types.online.transition import DataDbRow, Transition
 
 
-class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition, TetrisOnlineMetrics]):
+class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetrics]):
     dbPath: str
-    capacity: int
 
     def __init__(self, rootPath: str | None = None, capacity: int | None = None) -> None:
         if rootPath is None:
@@ -31,11 +32,11 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
                 );"""
             )
 
-    def pushGameplay(self, gameplay: TetrisGameplayRecord) -> None:
+    def pushGameplay(self, gameplay: GameplayRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
         for epoch in gameplay.epochs:
             self.pushEpoch(epoch)
 
-    def pushEpoch(self, epoch: TetrisEpochRecord) -> None:
+    def pushEpoch(self, epoch: EpochRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
         entries = list(
             map(
                 lambda move: TetrisTransition(**move.dict()),
@@ -44,7 +45,7 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
         )
         return self.pushEntries(entries)
 
-    def pushEntries(self, entries: list[TetrisTransition]) -> None:
+    def pushEntries(self, entries: Sequence[Transition[TetrisState, TetrisAction]]) -> None:
         query = """
             INSERT INTO data (
                 state,
@@ -57,7 +58,7 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisTransition,
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
 
-    def sample(self, batchSize: int) -> list[TetrisTransition]:
+    def sample(self, batchSize: int) -> Sequence[Transition[TetrisState, TetrisAction]]:
         with SqliteConnection(self.dbPath) as cur:
             numPositive = cur.execute("select count(*) from data where reward > 0").fetchone()[0]
             numZeros = cur.execute(f"select count(*) from data where reward = 0 limit {self.capacity}").fetchone()[0]

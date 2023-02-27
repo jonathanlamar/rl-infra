@@ -41,7 +41,7 @@ class NumpyArray(NDArray[Any], Generic[DType]):
         if isinstance(val, dict):
             # validate the contents of val
             arr = SerializedNumpyArray(**val)  # pyright: ignore
-            res = uncompressNpArray(asdict(arr))
+            res = uncompressNpArray(**asdict(arr))
         if res is None:
             raise TypeError("val is not a numpy array or a serialized numpy array")
         if expectedDtype != res.dtype:
@@ -54,7 +54,7 @@ class BasePydanticConfig:
 
     allow_mutation = False
     use_enum_values = True
-    json_encoders = {NDArray[Any]: compressNpArray}
+    json_encoders = {np.ndarray: compressNpArray}
     orm_mode = True
 
 

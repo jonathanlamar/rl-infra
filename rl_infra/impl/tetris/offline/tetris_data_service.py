@@ -37,13 +37,7 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
             self.pushEpoch(epoch)
 
     def pushEpoch(self, epoch: EpochRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
-        entries = list(
-            map(
-                lambda move: TetrisTransition(**move.dict()),
-                epoch.moves,
-            )
-        )
-        return self.pushEntries(entries)
+        return self.pushEntries(epoch.moves)
 
     def pushEntries(self, entries: Sequence[Transition[TetrisState, TetrisAction]]) -> None:
         query = """

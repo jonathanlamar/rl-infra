@@ -55,7 +55,7 @@ class RobotClient:
             raise requests.HTTPError("Failed to get image")
 
         # Construct and deconstruct to validate contents of imgResponse
-        return uncompressNpArray(asdict(SerializedNumpyArray(**imgResponse.json())))
+        return uncompressNpArray(**asdict(SerializedNumpyArray(**imgResponse.json())))
 
     @staticmethod
     def _getDistance() -> int:
@@ -85,7 +85,7 @@ class RobotClient:
             raise requests.HTTPError("Failed to get light and color reading")
 
         # Construct and deconstruct to validate contents of lightColorResponse
-        data = uncompressNpArray(asdict(SerializedNumpyArray(**lightColorResponse.json())))
+        data = uncompressNpArray(**asdict(SerializedNumpyArray(**lightColorResponse.json())))
         return tuple(data)
 
     @staticmethod
@@ -98,7 +98,7 @@ class RobotClient:
             raise requests.HTTPError("Failed to get distance sweep")
 
         # Construct and deconstruct to validate contents of lightColorResponse
-        return uncompressNpArray(asdict(SerializedNumpyArray(**sweepResponse.json())))
+        return uncompressNpArray(**asdict(SerializedNumpyArray(**sweepResponse.json())))
 
     @staticmethod
     def _rotateMast(heading: int):

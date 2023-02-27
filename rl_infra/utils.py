@@ -14,9 +14,9 @@ def compressNpArray(nparr: NDArray[Any]) -> dict[str, str | tuple[int, ...]]:
     )
 
 
-def uncompressNpArray(serializedArray: dict[str, str | tuple[int, ...]]) -> NDArray[Any]:
+def uncompressNpArray(data: str, shape: tuple[int, ...], dtype: str) -> NDArray[Any]:
     """Returns the given numpy array decoded from base64-encoded string."""
-    dt = np.dtype(serializedArray["dtype"])
-    buff = base64.decodebytes(bytes(serializedArray["data"], "ascii"))  # pyright: ignore
+    dt = np.dtype(dtype)
+    buff = base64.decodebytes(bytes(data, "ascii"))  # pyright: ignore
     arr = np.frombuffer(buff, dtype=dt)
-    return arr.reshape(arr["shape"])
+    return arr.reshape(shape)

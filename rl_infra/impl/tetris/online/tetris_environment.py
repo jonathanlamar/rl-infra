@@ -53,9 +53,9 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
             self.currentEpochRecord = self.currentEpochRecord.append(transition)
         return transition
 
-    def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:
+    def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:  # pyright: ignore
         if newState.isTerminal:
-            return -1
+            return -10
         return newState.score - oldState.score
 
     def startNewEpoch(self) -> None:

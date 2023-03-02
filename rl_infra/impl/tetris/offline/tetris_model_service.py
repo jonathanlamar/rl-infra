@@ -6,7 +6,6 @@ from typing import Any, NamedTuple
 import torch
 from pydantic.utils import GetterDict
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
@@ -104,22 +103,18 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
     def publishNewModel(
         self,
         modelTag: str,
-        actorModel: DeepQNetwork | None = None,
-        criticModel: DeepQNetwork | None = None,
+        policyModel: DeepQNetwork | None = None,
+        targetModel: DeepQNetwork | None = None,
         optimizer: Optimizer | None = None,
-        scheduler: ReduceLROnPlateau | None = None,
     ) -> int:
         maybeExistingModelKey = self.getLatestVersionKey(modelTag)
         if maybeExistingModelKey is not None:
             version = maybeExistingModelKey.version + 1
-            weightsLocation = maybeExistingModelKey.weightsLocation
         else:
             version = 0
-            weightsLocation = self._generateWeightsLocation(modelTag, version)
+        weightsLocation = self._generateWeightsLocation(modelTag, version)
         newModelKey = ModelDbKey(tag=modelTag, version=version, weightsLocation=weightsLocation)
-        self.updateModel(
-            newModelKey, actorModel=actorModel, criticModel=criticModel, optimizer=optimizer, scheduler=scheduler
-        )
+        self.updateModel(newModelKey, policyModel=policyModel, targetModel=targetModel, optimizer=optimizer)
         return version
 
     def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
@@ -143,7 +138,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
         entry = self._getBestModel(modelTag, version)
         if not os.path.exists(self.deployModelRootPath):
             os.makedirs(self.deployModelRootPath)
-        os.system(f"cp {entry.dbKey.actorLocation} {self.deployModelWeightsPath}")
+        os.system(f"cp {entry.dbKey.policyModelLocation} {self.deployModelWeightsPath}")
         with open(self.deployModelEntryPath, "w") as f:
             f.write(entry.json())
         return entry.dbKey.version
@@ -151,10 +146,9 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
     def updateModel(
         self,
         key: ModelDbKey,
-        actorModel: DeepQNetwork | None = None,
-        criticModel: DeepQNetwork | None = None,
+        policyModel: DeepQNetwork | None = None,
+        targetModel: DeepQNetwork | None = None,
         optimizer: Optimizer | None = None,
-        scheduler: ReduceLROnPlateau | None = None,
         numEpochsPlayed: int | None = None,
         numBatchesTrained: int | None = None,
         onlinePerformance: TetrisOnlineMetrics | None = None,
@@ -170,7 +164,7 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
         maybeExistingEntry = self._fetchEntry(key)
         if maybeExistingEntry is not None:
             entry = maybeExistingEntry.updateWithNewValues(entry)
-        self._writeWeights(key, actorModel, criticModel, optimizer, scheduler)
+        self._writeWeights(key, policyModel, targetModel, optimizer)
         self._upsertToTable(entry)
 
     def pushBatchLosses(self, modelKey: ModelDbKey, losses: list[float]) -> None:
@@ -253,21 +247,18 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
     def _writeWeights(
         self,
         key: ModelDbKey,
-        actorModel: DeepQNetwork | None = None,
-        criticModel: DeepQNetwork | None = None,
+        policyModel: DeepQNetwork | None = None,
+        targetModel: DeepQNetwork | None = None,
         optimizer: Optimizer | None = None,
-        scheduler: ReduceLROnPlateau | None = None,
     ) -> None:
         if not os.path.exists(key.weightsLocation):
             os.makedirs(key.weightsLocation)
-        if actorModel is not None:
-            torch.save(actorModel.state_dict(), key.actorLocation)
-        if criticModel is not None:
-            torch.save(criticModel.state_dict(), key.criticLocation)
+        if policyModel is not None:
+            torch.save(policyModel.state_dict(), key.policyModelLocation)
+        if targetModel is not None:
+            torch.save(targetModel.state_dict(), key.targetModelLocation)
         if optimizer is not None:
             torch.save(optimizer.state_dict(), key.optimizerLocation)
-        if scheduler is not None:
-            torch.save(scheduler.state_dict(), key.schedulerLocation)
 
     def _generateWeightsLocation(self, tag: str, version: int) -> str:
         return f"{self.modelWeightsPathStub}/{tag}/{version}"

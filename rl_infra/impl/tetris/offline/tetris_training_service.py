@@ -4,8 +4,7 @@ import torch
 from tetris.config import BOARD_SIZE
 from torch import Tensor
 from torch.nn import L1Loss
-from torch.optim import SGD, Optimizer
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim import AdamW, Optimizer
 
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
@@ -15,19 +14,13 @@ from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisSt
 from rl_infra.types.offline.training_service import TrainingService
 from rl_infra.types.online.transition import Transition
 
-GAMMA = 0.1
+FUTURE_REWARDS_DISCOUNT = 0.99
 TAU = 0.005
 
 
-class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics]):
-    modelService: TetrisModelService
-    dataService: TetrisDataService
-    device: torch.device
+class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, TetrisModelService, TetrisDataService]):
     modelInitArgs: dict[str, Any]
-    optimizer: Optimizer | None
-    scheduler: ReduceLROnPlateau | None
-    actor: DeepQNetwork | None
-    critic: DeepQNetwork | None
+    optimizerInitialArgs: dict[str, Any]
 
     def __init__(self, device: torch.device) -> None:
         self.modelService = TetrisModelService()
@@ -39,69 +32,52 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics])
             "numOutputs": 5,
             "device": self.device,
         }
-        self.optimizerInitialArgs = {
-            "lr": 0.1,
-            "momentum": 0.9,
-            "dampening": 0.1,
-            "weight_decay": 0,
-        }
-        self.schedulerInitialArgs = {"mode": "min", "patience": 5, "verbose": True}
+        self.optimizerInitialArgs = {"lr": 1e-4, "amsgrad": True}
+        self.policyModel = None
+        self.optimizer = None
 
     def modelFactory(self) -> DeepQNetwork:
         return DeepQNetwork(**self.modelInitArgs)
 
     def optimizerFactory(self) -> Optimizer:
-        if self.actor is None:
-            raise RuntimeError("self.actor is not initialized")
-        return SGD(self.actor.parameters(), **self.optimizerInitialArgs)
-
-    def schedulerFactory(self) -> ReduceLROnPlateau:
-        if self.optimizer is None:
-            raise RuntimeError("self.optimizer is not initialized")
-        return ReduceLROnPlateau(optimizer=self.optimizer, **self.schedulerInitialArgs)
+        if self.policyModel is None:
+            raise RuntimeError("self.policyModel is not initialized")
+        return AdamW(self.policyModel.parameters(), **self.optimizerInitialArgs)
 
     def coldStart(self, modelTag: str) -> int:
-        self.actor = self.modelFactory()
-        self.critic = self.modelFactory()
+        self.policyModel = self.modelFactory()
+        self.targetModel = self.modelFactory()
         self.optimizer = self.optimizerFactory()
-        self.scheduler = self.schedulerFactory()
         return self.modelService.publishNewModel(
             modelTag=modelTag,
-            actorModel=self.actor,
-            criticModel=self.critic,
+            policyModel=self.policyModel,
+            targetModel=self.targetModel,
             optimizer=self.optimizer,
-            scheduler=self.scheduler,
         )
 
     def retrainAndPublish(self, modelTag: str, version: int, batchSize: int, numBatches: int) -> TetrisOfflineMetrics:
         if numBatches <= 0:
             raise ValueError("numBatches must be positive")
         entry = self.modelService.getModelEntry(modelTag, version)
-        self.actor = self.modelFactory()
-        self.actor.load_state_dict(torch.load(entry.dbKey.actorLocation))
-        self.critic = self.modelFactory()
-        self.critic.load_state_dict(torch.load(entry.dbKey.criticLocation))
-
+        self.policyModel = self.modelFactory()
+        self.policyModel.load_state_dict(torch.load(entry.dbKey.policyModelLocation))
+        self.targetModel = self.modelFactory()
+        self.targetModel.load_state_dict(torch.load(entry.dbKey.targetModelLocation))
         self.optimizer = self.optimizerFactory()
         self.optimizer.load_state_dict(torch.load(entry.dbKey.optimizerLocation))
-        self.scheduler = self.schedulerFactory()
-        self.scheduler.load_state_dict(torch.load(entry.dbKey.schedulerLocation))
 
         trainingLosses: list[float] = []
         for _ in range(numBatches):
             trainLoss = self._performBackpropOnBatch(batchSize)
             trainingLosses.append(trainLoss)
-            self._softUpdateCritic()
+            self._softUpdateTargetModel()
 
-        avgTrainingLoss = sum(trainingLosses) / numBatches
-        self.scheduler.step(avgTrainingLoss)
         self.modelService.pushBatchLosses(entry.dbKey, trainingLosses)
         self.modelService.updateModel(
             entry.dbKey,
-            actorModel=self.actor,
-            criticModel=self.critic,
+            policyModel=self.policyModel,
+            targetModel=self.targetModel,
             optimizer=self.optimizer,
-            scheduler=self.scheduler,
             numBatchesTrained=numBatches,
         )
 
@@ -110,26 +86,26 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics])
     def _performBackpropOnBatch(self, batchSize: int) -> float:
         if batchSize <= 0:
             raise ValueError("batchSize must be positive")
-        if self.actor is None or self.critic is None:
-            raise RuntimeError("Actor or critic not initialized")
+        if self.policyModel is None or self.targetModel is None:
+            raise RuntimeError("Policy model or target model not initialized")
         batch = self.dataService.sample(batchSize)
         loss = self._getBatchLoss(batch)
 
-        if self.optimizer is None or self.scheduler is None:
-            raise RuntimeError("Optimizer or scheduler not initialized")
+        if self.optimizer is None:
+            raise RuntimeError("Optimizer not initialized")
 
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
         # In-place gradient clipping
-        torch.nn.utils.clip_grad.clip_grad_value_(self.actor.parameters(), 100)
+        torch.nn.utils.clip_grad.clip_grad_value_(self.policyModel.parameters(), 100)
         self.optimizer.step()
 
         return loss.item()
 
     def _getBatchLoss(self, batch: Sequence[Transition[TetrisState, TetrisAction]]) -> Tensor:
-        if self.actor is None or self.critic is None:
-            raise RuntimeError("Actor or critic not initialized")
+        if self.policyModel is None or self.targetModel is None:
+            raise RuntimeError("Policy model or target model not initialized")
         nonFinalMask = torch.tensor(tuple(map(lambda s: not s.isTerminal, batch)), device=self.device, dtype=torch.bool)
         nonFinalNextStates = torch.cat([elt.newState.toDqnInput() for elt in batch if not elt.isTerminal])
 
@@ -140,7 +116,7 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics])
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        stateActionValues = self.actor(stateBatch).gather(1, actionBatch.reshape(-1, 1)).reshape(-1)
+        stateActionValues = self.policyModel(stateBatch).gather(1, actionBatch.reshape(-1, 1)).reshape(-1)
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -149,22 +125,23 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics])
         # state value or 0 in case the state was final.
         nextStateValues = torch.zeros(len(batch), device=self.device)
         with torch.no_grad():
-            nextStateValues[nonFinalMask] = self.critic(nonFinalNextStates).max(1)[0]
+            nextStateValues[nonFinalMask] = self.targetModel(nonFinalNextStates).max(1)[0]
 
         # Compute expected Q values
-        expectedStateActionValues = (nextStateValues * GAMMA) + rewardBatch
+        expectedStateActionValues = (nextStateValues * FUTURE_REWARDS_DISCOUNT) + rewardBatch
 
         # Compute Training loss
         criterion = L1Loss()
+
         return criterion(stateActionValues, expectedStateActionValues)
 
-    def _softUpdateCritic(self) -> None:
-        if self.actor is None or self.critic is None:
-            raise RuntimeError("Actor or critic not initialized")
+    def _softUpdateTargetModel(self) -> None:
+        if self.policyModel is None or self.targetModel is None:
+            raise RuntimeError("Policy model or target model not initialized")
         # Soft update of the target network's weights
         # θ′ ← τ θ + (1 −τ )θ′
-        criticStateDict = self.critic.state_dict()
-        actorStateDict = self.actor.state_dict()
-        for key in actorStateDict:
-            criticStateDict[key] = actorStateDict[key] * TAU + criticStateDict[key] * (1 - TAU)
-        self.critic.load_state_dict(criticStateDict)
+        targetModelStateDict = self.targetModel.state_dict()
+        policyModelStateDict = self.policyModel.state_dict()
+        for key in policyModelStateDict:
+            targetModelStateDict[key] = policyModelStateDict[key] * TAU + targetModelStateDict[key] * (1 - TAU)
+        self.targetModel.load_state_dict(targetModelStateDict)

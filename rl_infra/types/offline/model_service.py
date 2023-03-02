@@ -5,7 +5,6 @@ from typing import Generic, Protocol, TypeVar
 
 from torch.nn import Module
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing_extensions import Self
 
 from rl_infra.types.base_types import Metrics, SerializableDataClass
@@ -17,20 +16,16 @@ class ModelDbKey(SerializableDataClass):
     weightsLocation: str
 
     @property
-    def actorLocation(self) -> str:
-        return f"{self.weightsLocation}/actor.pt"
+    def policyModelLocation(self) -> str:
+        return f"{self.weightsLocation}/policyModel.pt"
 
     @property
-    def criticLocation(self) -> str:
-        return f"{self.weightsLocation}/critic.pt"
+    def targetModelLocation(self) -> str:
+        return f"{self.weightsLocation}/targetModel.pt"
 
     @property
     def optimizerLocation(self) -> str:
         return f"{self.weightsLocation}/optimizer.pt"
-
-    @property
-    def schedulerLocation(self) -> str:
-        return f"{self.weightsLocation}/scheduler.pt"
 
 
 OnlineMetrics = TypeVar("OnlineMetrics", bound=Metrics, contravariant=True)
@@ -64,10 +59,9 @@ class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
     def publishNewModel(
         self,
         modelTag: str,
-        actorModel: Model | None,
-        criticModel: Model | None,
+        policyModel: Model | None,
+        targetModel: Model | None,
         optimizer: Optimizer | None,
-        scheduler: ReduceLROnPlateau | None,
     ) -> int:
         ...
 
@@ -83,10 +77,9 @@ class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
     def updateModel(
         self,
         key: ModelDbKey,
-        actorModel: Model | None,
-        criticModel: Model | None,
+        policyModel: Model | None,
+        targetModel: Model | None,
         optimizer: Optimizer | None,
-        scheduler: ReduceLROnPlateau | None,
         numEpochsPlayed: int | None,
         numBatchesTrained: int | None,
         onlinePerformance: OnlineMetrics | None,

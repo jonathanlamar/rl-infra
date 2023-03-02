@@ -3,7 +3,6 @@ import argparse
 from time import sleep
 
 import torch
-from IPython.terminal.embed import embed
 from tetris.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
@@ -45,10 +44,19 @@ def getParser() -> argparse.ArgumentParser:
         "--retrain-interval",
         type=int,
         default=10,
-        help="How often (in epochs) to retrain the model (default 10).  Set to zero to skip retraining entirely.",
+        help="How often (in epochs) to retrain the model (default 10).  Set to zero to skip retraining during play.",
     )
     parser.add_argument(
-        "-r", "--retrain-batches", type=int, default=10, help="Number of batches per retraining session (default 10)."
+        "-r", "--retrain-batches", type=int, default=1, help="Number of batches per retraining session (default 10)."
+    )
+    parser.add_argument(
+        "-s",
+        "--retrain-sessions",
+        type=int,
+        default=10,
+        help="""Number of retraining sessions (default 1).  There is no difference to the model between training 10
+        batches in 10 sessions versus 100 batches in one sesson. However, the average loss per session will be plotted
+        and the offline metrics may vary between the two schedules.""",
     )
     parser.add_argument(
         "-b",
@@ -82,7 +90,7 @@ def deployAndLoadModel(args: argparse.Namespace) -> TetrisAgent:
     print(f"Deployed version {version} of model {args.model_tag}")
 
     print("Loading deployed model")
-    agent = TetrisAgent(device=device)
+    agent = TetrisAgent(device=device, useGreedyPolicy=args.greedy_policy)
     print(f"Model loaded.  Agent has played {agent.numEpochsPlayed} epochs.  ")
 
     return agent
@@ -139,19 +147,20 @@ def updateGamePlayData(
 
 
 def retrainModelAndUpdateMetrics(agent: TetrisAgent, args: argparse.Namespace) -> None:
-    print("Retraining models")
-    offlinePerformance = trainingService.retrainAndPublish(
-        modelTag=agent.dbKey.tag,
-        version=agent.dbKey.version,
-        batchSize=args.batch_size,
-        numBatches=args.retrain_batches,
-    )
-    print(f"Average training loss: {offlinePerformance.avgTrainingLoss:0.4f}")
+    for _ in range(args.retrain_sessions):
+        print("Retraining models")
+        offlinePerformance = trainingService.retrainAndPublish(
+            modelTag=agent.dbKey.tag,
+            version=agent.dbKey.version,
+            batchSize=args.batch_size,
+            numBatches=args.retrain_batches,
+        )
+        print(f"Average training loss: {offlinePerformance.avgTrainingLoss:0.4f}")
 
-    modelService.updateModel(
-        agent.dbKey,
-        offlinePerformance=offlinePerformance,
-    )
+        modelService.updateModel(
+            agent.dbKey,
+            offlinePerformance=offlinePerformance,
+        )
 
 
 if __name__ == "__main__":

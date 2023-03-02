@@ -21,8 +21,9 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
     policy: DeepQNetwork
     # Make sure the models always see the same order
     possibleActions = list(sorted(TetrisAction))
+    useGreedyPolicy: bool
 
-    def __init__(self, device: torch.device) -> None:
+    def __init__(self, device: torch.device, useGreedyPolicy: bool = False) -> None:
         self.policy = DeepQNetwork(
             arrayHeight=BOARD_SIZE[0],
             arrayWidth=BOARD_SIZE[1],
@@ -33,11 +34,12 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
         entry = TetrisModelDbEntry.parse_file(MODEL_ENTRY_PATH)
         self.dbKey = entry.dbKey
         self.numEpochsPlayed = entry.numEpochsPlayed
-        self.epsilon = self._calculateEpsilon()
+        self.useGreedyPolicy = useGreedyPolicy
+        self.epsilon = self._updateEpsilon()
 
     def startNewEpoch(self) -> None:
         self.numEpochsPlayed += 1
-        self.epsilon = self._calculateEpsilon()
+        self.epsilon = self._updateEpsilon()
 
     def choosePolicyAction(self, state: TetrisState) -> TetrisAction:
         input = state.toDqnInput()
@@ -51,7 +53,9 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
     def chooseRandomAction(self) -> TetrisAction:
         return random.choice(self.possibleActions)
 
-    def _calculateEpsilon(self) -> float:
+    def _updateEpsilon(self) -> float:
+        if self.useGreedyPolicy:
+            return 0
         return FINAL_EPSILON + (INITIAL_EPSILON - FINAL_EPSILON) * math.exp(
             -1.0 * self.numEpochsPlayed / EPSILON_DECAY_RATE
         )

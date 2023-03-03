@@ -3,7 +3,6 @@ import argparse
 from time import sleep
 
 import torch
-from tetris.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
@@ -106,7 +105,6 @@ def playEpoch(
     while not gameIsOver:
         action = agent.chooseAction(env.currentState)
         transition = env.step(action)
-        env.gameState.update(KeyPress.DOWN)
         if args.print:
             env.gameState.draw()
             sleep(0.05)

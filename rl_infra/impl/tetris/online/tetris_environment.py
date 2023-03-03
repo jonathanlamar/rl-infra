@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from time import time
+
 from tetris.game import GameState
+from tetris.utils.utils import KeyPress
 
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
 from rl_infra.types.base_types import Metrics
@@ -32,8 +35,10 @@ class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisOnlin
 
 class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetrics]):
     gameState: GameState
+    humanPlayer: bool
 
-    def __init__(self) -> None:
+    def __init__(self, humanPlayer: bool = False) -> None:
+        self.humanPlayer = humanPlayer
         self.gameState = GameState()
         self.currentState = TetrisState.from_orm(self.gameState)
         self.currentGameplayRecord = TetrisGameplayRecord(epochs=[])
@@ -42,6 +47,10 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
     def step(self, action: TetrisAction) -> TetrisTransition:
         oldState = self.currentState
         self.gameState.update(action.toKeyPress())
+
+        if (self.humanPlayer and time() - self.gameState.lastAdvanceTime > 0.25) or (not self.humanPlayer):
+            self.gameState.update(KeyPress.DOWN)
+
         isTerminal = self.gameState.dead
         self.currentState = TetrisState.from_orm(self.gameState)
         reward = self.getReward(oldState, action, self.currentState)

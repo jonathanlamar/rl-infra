@@ -66,7 +66,7 @@ class TetrisState(State):
     isTerminal: bool
 
     def toDqnInput(self) -> Tensor:
-        return torch.from_numpy(self.board.copy().reshape(1, BOARD_SIZE[0] * BOARD_SIZE[1]))
+        return torch.from_numpy(self.board.copy().reshape(1, 1, BOARD_SIZE[0], BOARD_SIZE[1]))
 
     class Config(State.Config):
         """pydantic config class"""

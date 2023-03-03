@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-from time import sleep, time
+from time import sleep
 
 from IPython.terminal.embed import embed
 from pynput.keyboard import Key, KeyCode, Listener
-from tetris.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
@@ -29,11 +28,8 @@ def mainLoop(env: TetrisEnvironment, dataService: TetrisDataService):
     ACTION = TetrisAction.NONE
 
     while not env.gameState.dead:
-        if ACTION != TetrisAction.NONE:
-            env.step(ACTION)
-            ACTION = TetrisAction.NONE
-        if time() - env.gameState.lastAdvanceTime > 0.25:
-            env.gameState.update(KeyPress.DOWN)
+        env.step(ACTION)
+        ACTION = TetrisAction.NONE
         env.gameState.draw()
         sleep(0.05)
 
@@ -46,6 +42,6 @@ if __name__ == "__main__":
     dataService = TetrisDataService()
 
     with Listener(on_press=onPress) as listener:
-        env = TetrisEnvironment()
+        env = TetrisEnvironment(humanPlayer=True)
         mainLoop(env, dataService)
     print("You lose!")

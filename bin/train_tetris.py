@@ -108,7 +108,7 @@ def playEpoch(
         if args.print:
             env.gameState.draw()
             sleep(0.05)
-        gameIsOver = transition.isTerminal
+        gameIsOver = transition.state.isTerminal
     print(
         f"Epoch {agent.numEpochsPlayed} done. "
         f"Moves: {len(env.currentEpochRecord.moves)}, "

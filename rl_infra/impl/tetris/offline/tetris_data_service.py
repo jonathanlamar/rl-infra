@@ -27,8 +27,7 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
                     state TEXT,
                     action TEXT,
                     new_state TEXT,
-                    reward REAL,
-                    is_terminal BOOLEAN
+                    reward REAL
                 );"""
             )
 
@@ -45,14 +44,20 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
                 state,
                 action,
                 new_state,
-                reward,
-                is_terminal
-            ) VALUES (?, ?, ?, ?, ?);"""
+                reward
+            ) VALUES (?, ?, ?, ?);"""
         values = [entry.toDbRow() for entry in entries]
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
 
     def sample(self, batchSize: int) -> Sequence[Transition[TetrisState, TetrisAction]]:
+        with SqliteConnection(self.dbPath) as cur:
+            rows = cur.execute(f"select * from data order by random() limit {batchSize}").fetchall()
+        if len(rows) < batchSize:
+            raise ValueError("Not enough results for batch.  Reduce batch size or collect more data.")
+        return [TetrisTransition.from_orm(DataDbRow(*row)) for row in random.sample(rows, batchSize)]
+
+    def sampleStratified(self, batchSize: int) -> Sequence[Transition[TetrisState, TetrisAction]]:
         with SqliteConnection(self.dbPath) as cur:
             numPositive = cur.execute("select count(*) from data where reward > 0").fetchone()[0]
             numZeros = cur.execute(f"select count(*) from data where reward = 0 limit {self.capacity}").fetchone()[0]

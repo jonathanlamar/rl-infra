@@ -106,8 +106,10 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, 
     def _getBatchLoss(self, batch: Sequence[Transition[TetrisState, TetrisAction]]) -> Tensor:
         if self.policyModel is None or self.targetModel is None:
             raise RuntimeError("Policy model or target model not initialized")
-        nonFinalMask = torch.tensor(tuple(map(lambda s: not s.isTerminal, batch)), device=self.device, dtype=torch.bool)
-        nonFinalNextStates = torch.cat([elt.newState.toDqnInput() for elt in batch if not elt.isTerminal])
+        nonFinalMask = torch.tensor(
+            tuple(map(lambda s: not s.state.isTerminal, batch)), device=self.device, dtype=torch.bool
+        )
+        nonFinalNextStates = torch.cat([elt.newState.toDqnInput() for elt in batch if not elt.state.isTerminal])
 
         stateBatch = torch.cat([elt.state.toDqnInput() for elt in batch])
         actionBatch = torch.tensor([TetrisAgent.possibleActions.index(elt.action) for elt in batch])

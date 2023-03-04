@@ -9,7 +9,7 @@ from rl_infra.types.base_types import SerializableDataClass
 
 # States will vary quite a bit between implementations, so I am just using this class as a type stub.
 class State(SerializableDataClass):
-    pass
+    isTerminal: bool
 
 
 Action = str
@@ -22,7 +22,6 @@ class DataDbRow(NamedTuple):
     action: str
     newState: str
     reward: float
-    isTerminal: bool
 
 
 # This is really an interface, but I have to use ABC here because pydantic does not support mixing in with protocols.
@@ -31,7 +30,6 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
     action: A
     newState: S
     reward: float
-    isTerminal: bool
 
     @validator("state", "newState", pre=True)
     @classmethod
@@ -45,5 +43,4 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
             action=self.action,
             newState=self.newState.json(),
             reward=self.reward,
-            isTerminal=self.isTerminal,
         )

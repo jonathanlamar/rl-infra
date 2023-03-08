@@ -3,22 +3,23 @@ from typing import Any, Sequence
 import torch
 from tetris.config import BOARD_SIZE
 from torch import Tensor
-from torch.nn import L1Loss
-from torch.optim import AdamW, Optimizer
+from torch.nn import MSELoss
+from torch.optim import Optimizer, RMSprop
 
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService, TetrisOfflineMetrics
-from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
+from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
+from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent, TetrisOfflineMetrics
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
+from rl_infra.types.offline.model_service import ModelDbKey
 from rl_infra.types.offline.training_service import TrainingService
 from rl_infra.types.online.transition import Transition
 
 FUTURE_REWARDS_DISCOUNT = 0.99
-TAU = 0.005
+TAU = 1  # Soft update interpolation factor.  Set to 1 for hard update (no interpolation)
 
 
-class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, TetrisModelService, TetrisDataService]):
+class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, TetrisDataService]):
     modelInitArgs: dict[str, Any]
     optimizerInitialArgs: dict[str, Any]
 
@@ -28,11 +29,19 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, 
         self.device = device
         self.modelInitArgs = {
             "arrayHeight": BOARD_SIZE[0],
-            "arrayWidth": BOARD_SIZE[1],
+            "arrayWidth": BOARD_SIZE[1] + 1,
             "numOutputs": 5,
             "device": self.device,
         }
-        self.optimizerInitialArgs = {"lr": 1e-4, "amsgrad": True}
+        self.optimizerInitialArgs = {
+            "lr": 1e-4,
+            # These are the defaults.
+            "alpha": 0.99,  # Smoothing parameter
+            "eps": 1e-8,  # Term added to denom to improve numerical stability
+            "weight_decay": 0,  # L2 penalty
+            "momentum": 0,
+            "centered": False,
+        }
         self.policyModel = None
         self.optimizer = None
 
@@ -42,7 +51,7 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, 
     def optimizerFactory(self) -> Optimizer:
         if self.policyModel is None:
             raise RuntimeError("self.policyModel is not initialized")
-        return AdamW(self.policyModel.parameters(), **self.optimizerInitialArgs)
+        return RMSprop(self.policyModel.parameters(), **self.optimizerInitialArgs)
 
     def coldStart(self, modelTag: str) -> int:
         self.policyModel = self.modelFactory()
@@ -55,33 +64,58 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, 
             optimizer=self.optimizer,
         )
 
-    def retrainAndPublish(self, modelTag: str, version: int, batchSize: int, numBatches: int) -> TetrisOfflineMetrics:
+    def retrainAndPublish(
+        self,
+        modelDbKey: ModelDbKey,
+        epochNumber: int,
+        batchSize: int,
+        numBatches: int,
+        validationEpisodeId: int | None = None,
+    ) -> None:
         if numBatches <= 0:
             raise ValueError("numBatches must be positive")
-        entry = self.modelService.getModelEntry(modelTag, version)
+        entry = self.modelService.getModelEntry(modelDbKey)
+        if entry is None:
+            raise KeyError(f"ModelDbKey {modelDbKey} not found")
         self.policyModel = self.modelFactory()
-        self.policyModel.load_state_dict(torch.load(entry.dbKey.policyModelLocation))
+        self.policyModel.load_state_dict(torch.load(modelDbKey.policyModelLocation))
         self.targetModel = self.modelFactory()
-        self.targetModel.load_state_dict(torch.load(entry.dbKey.targetModelLocation))
+        self.targetModel.load_state_dict(torch.load(modelDbKey.targetModelLocation))
         self.optimizer = self.optimizerFactory()
-        self.optimizer.load_state_dict(torch.load(entry.dbKey.optimizerLocation))
+        self.optimizer.load_state_dict(torch.load(modelDbKey.optimizerLocation))
 
         trainingLosses: list[float] = []
         for _ in range(numBatches):
             trainLoss = self._performBackpropOnBatch(batchSize)
             trainingLosses.append(trainLoss)
             self._softUpdateTargetModel()
+        avgBatchLoss = sum(trainingLosses) / numBatches
+        avgMaxQ, id = self.validateOnEpisode(validationEpisodeId)
 
-        self.modelService.pushBatchLosses(entry.dbKey, trainingLosses)
+        offlineMetrics = TetrisOfflineMetrics(
+            epochNumber=epochNumber,
+            numBatchesTrained=numBatches,
+            validationEpisodeId=id,
+            avgBatchLoss=avgBatchLoss,
+            valEpisodeAvgMaxQ=avgMaxQ,
+        )
+        self.modelService.publishOfflineMetrics(modelDbKey, offlineMetrics)
         self.modelService.updateModel(
-            entry.dbKey,
+            entry.modelDbKey,
             policyModel=self.policyModel,
             targetModel=self.targetModel,
             optimizer=self.optimizer,
-            numBatchesTrained=numBatches,
         )
 
-        return TetrisOfflineMetrics.fromList(trainingLosses)
+    def validateOnEpisode(self, validationEpisodeId: int | None = None) -> tuple[float, int]:
+        if self.policyModel is None:
+            raise RuntimeError("Policy model not initialized")
+        valEpisode = self.dataService.getValidationEpisode(validationEpisodeId)
+        episodeStateTensor = torch.concat([m.state.toDqnInput() for m in valEpisode.moves])
+        stateActionValues = self.policyModel(episodeStateTensor)
+        stateMaxQ = stateActionValues.max(1)[0]
+        avgMaxQ = stateMaxQ.mean().item()
+        return avgMaxQ, valEpisode.episodeNumber
 
     def _performBackpropOnBatch(self, batchSize: int) -> float:
         if batchSize <= 0:
@@ -133,7 +167,7 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisOfflineMetrics, 
         expectedStateActionValues = (nextStateValues * FUTURE_REWARDS_DISCOUNT) + rewardBatch
 
         # Compute Training loss
-        criterion = L1Loss()
+        criterion = MSELoss()
 
         return criterion(stateActionValues, expectedStateActionValues)
 

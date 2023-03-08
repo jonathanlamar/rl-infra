@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from rl_infra.impl.robot.online.robot_client import RobotClient
 from rl_infra.impl.robot.online.robot_transition import RobotAction, RobotState, RobotTransition
 from rl_infra.types.base_types import Metrics
-from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord
+from rl_infra.types.online.environment import Environment, EpisodeRecord, GameplayRecord
 
 
 # TODO: Implement stubs here
@@ -14,7 +14,7 @@ class RobotOnlineMetrics(Metrics):
         return self
 
 
-class RobotEpochRecord(EpochRecord[RobotState, RobotAction, RobotTransition, RobotOnlineMetrics]):
+class RobotEpochRecord(EpisodeRecord[RobotState, RobotAction, RobotTransition, RobotOnlineMetrics]):
     epochNumber: int
     moves: list[RobotTransition]
 
@@ -77,7 +77,7 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction, RobotTransition
         sensorReading = RobotClient.getSensorReading()
         return RobotState(**sensorReading.dict())
 
-    def startNewEpoch(self) -> None:
+    def startNewEpisode(self) -> None:
         self.currentState = RobotEnvironment._getState()
-        self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
+        self.currentGameplayRecord = self.currentGameplayRecord.appendEpisode(self.currentEpochRecord)
         self.currentEpochRecord = RobotEpochRecord(epochNumber=self.currentEpochRecord.epochNumber + 1, moves=[])

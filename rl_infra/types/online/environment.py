@@ -4,7 +4,7 @@ from typing import Generic, Protocol, TypeVar
 from typing_extensions import Self
 
 from rl_infra.types.base_types import SerializableDataClass
-from rl_infra.types.online.agent import OnlineMetrics
+from rl_infra.types.offline.schema import OnlineMetrics
 from rl_infra.types.online.transition import Action, State, Transition
 
 S_co = TypeVar("S_co", bound=State, covariant=True)

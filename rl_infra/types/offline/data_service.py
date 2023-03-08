@@ -1,6 +1,6 @@
 from typing import Protocol, Sequence, TypeVar
 
-from rl_infra.types.online.agent import OnlineMetrics
+from rl_infra.types.offline.schema import OnlineMetrics
 from rl_infra.types.online.environment import EpisodeRecord, GameplayRecord
 from rl_infra.types.online.transition import Action, State, Transition
 

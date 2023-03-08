@@ -1,10 +1,8 @@
 import random
-from abc import ABC
 from typing import Protocol, TypeVar
 
 from torch.nn import Module
 
-from rl_infra.types.base_types import SerializableDataClass
 from rl_infra.types.offline.model_service import ModelDbKey
 from rl_infra.types.online.transition import Action, State
 
@@ -32,13 +30,3 @@ class Agent(Protocol[S, A, M]):
 
     def chooseRandomAction(self) -> A:
         ...
-
-
-class OnlineMetrics(ABC, SerializableDataClass):
-    episodeNumber: int
-    # Other metrics vary by implementation
-
-
-class OfflineMetrics(ABC, SerializableDataClass):
-    epochNumber: int
-    # Other metrics vary by implementation

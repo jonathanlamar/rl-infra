@@ -9,7 +9,8 @@ from torch.optim import Optimizer, RMSprop
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
 from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
-from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent, TetrisOfflineMetrics
+from rl_infra.impl.tetris.offline.tetris_schema import TetrisOfflineMetrics
+from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
 from rl_infra.types.offline.model_service import ModelDbKey
 from rl_infra.types.offline.training_service import TrainingService

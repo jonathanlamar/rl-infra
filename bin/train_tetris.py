@@ -114,5 +114,5 @@ if __name__ == "__main__":
         updateOnlineMetrics(agent.dbKey, env, modelService)
 
     print("Deleting old training examples")
-    dataService.keepNewRowsDeleteOld(sgn=0, numToKeep=1000)
-    dataService.keepNewRowsDeleteOld(sgn=-1, numToKeep=1000)
+    dataService.keepNewRowsDeleteOld(sgn=0)
+    dataService.keepNewRowsDeleteOld(sgn=-1)

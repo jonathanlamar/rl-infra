@@ -9,7 +9,7 @@ from tetris.config.config import BOARD_SIZE
 from tetris.game import GameState
 from tetris.utils.utils import KeyPress
 
-from rl_infra.impl.tetris.online.tetris_agent import TetrisOnlineMetrics
+from rl_infra.impl.tetris.offline.tetris_schema import TetrisOnlineMetrics
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
 from rl_infra.types.online.environment import Environment, EpisodeRecord, GameplayRecord
 

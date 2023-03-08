@@ -5,7 +5,7 @@ import torch
 from tetris.config import BOARD_SIZE
 
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
-from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelDbEntry
+from rl_infra.impl.tetris.offline.tetris_schema import TetrisModelDbEntry
 from rl_infra.impl.tetris.online.config import (
     EPSILON_DECAY_RATE,
     FINAL_EPSILON,
@@ -14,7 +14,7 @@ from rl_infra.impl.tetris.online.config import (
     MODEL_WEIGHTS_PATH,
 )
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
-from rl_infra.types.online.agent import Agent, OfflineMetrics, OnlineMetrics
+from rl_infra.types.online.agent import Agent
 
 
 class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
@@ -54,15 +54,3 @@ class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
         return FINAL_EPSILON + (INITIAL_EPSILON - FINAL_EPSILON) * math.exp(
             -1.0 * self.numEpisodesPlayed / EPSILON_DECAY_RATE
         )
-
-
-class TetrisOnlineMetrics(OnlineMetrics):
-    numMoves: int
-    score: int
-
-
-class TetrisOfflineMetrics(OfflineMetrics):
-    numBatchesTrained: int
-    avgBatchLoss: float
-    validationEpisodeId: int
-    valEpisodeAvgMaxQ: float  # TODO: This needs a better name

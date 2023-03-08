@@ -10,42 +10,44 @@ from torch.optim import Optimizer
 from rl_infra.impl.tetris.offline.config import DB_ROOT_PATH
 from rl_infra.impl.tetris.offline.dqn import DeepQNetwork
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
+from rl_infra.impl.tetris.online.tetris_agent import TetrisOfflineMetrics
 from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
-from rl_infra.types.base_types import Metrics
 from rl_infra.types.offline import ModelDbEntry, ModelDbKey, ModelService, SqliteConnection
+from rl_infra.types.offline.model_service import OfflineMetricsDbEntry, OnlineMetricsDbEntry
 
 
 class TetrisModelDbRow(NamedTuple):
     tag: str
     version: int
     weightsLocation: str
-    numEpochsPlayed: int
+    numEpisodesPlayed: int
     numBatchesTrained: int
-    avgEpochLength: float | None
-    avgEpochScore: float | None
-    avgTrainingLoss: float | None
+    avgEpisodeLength: float | None
+    avgEpisodeScore: float | None
+    recencyWeightedAvgLoss: float | None
+    recencyWeightedAvgValidationQ: float | None
 
 
-class TetrisOfflineMetrics(Metrics):
-    avgTrainingLoss: float | None = None
-
-    @classmethod
-    def fromList(cls, losses: list[float]) -> TetrisOfflineMetrics:
-        if not losses:
-            return TetrisOfflineMetrics()
-        avgLoss = sum(losses) / len(losses)
-        return cls(avgTrainingLoss=avgLoss)
-
-    def updateWithNewValues(self, other: TetrisOfflineMetrics) -> TetrisOfflineMetrics:
-        """For each metric, compute average.  This results in an exponential recency weighted average."""
-
-        return TetrisOfflineMetrics(
-            avgTrainingLoss=TetrisOfflineMetrics.avgWithoutNone(self.avgTrainingLoss, other.avgTrainingLoss),
-        )
+class TetrisOfflineMetricsDbRow(NamedTuple):
+    tag: str
+    version: int
+    epochNumber: int
+    numBatchesTrained: int
+    avgBatchLoss: float
+    validationEpisodeId: str
+    valEpisodeAvgMaxQ: float
 
 
-class TetrisModelEntryGetterDict(GetterDict):
-    """Special logic for parsing ModelDbRow"""
+class TetrisOnlineMetricsDbRow(NamedTuple):
+    tag: str
+    version: int
+    episodeNumber: int
+    numMoves: int
+    score: int
+
+
+class TetrisModelDbGetterDict(GetterDict):
+    """Special logic for parsing Tetris model database rows"""
 
     def get(self, key: str, default: Any = None) -> Any:
         if isinstance(self._obj, TetrisModelDbRow):
@@ -53,24 +55,67 @@ class TetrisModelEntryGetterDict(GetterDict):
                 return ModelDbKey.from_orm(self._obj)
             if key == "onlinePerformance":
                 return TetrisOnlineMetrics.from_orm(self._obj)
-            if key == "offlinePerformance":
+        if isinstance(self._obj, TetrisOfflineMetricsDbRow):
+            if key == "dbKey":
+                return ModelDbKey.from_orm(self._obj)
+            if key == "offlineMetrics":
+                return TetrisOfflineMetrics.from_orm(self._obj)
+        if isinstance(self._obj, TetrisOnlineMetricsDbRow):
+            if key == "dbKey":
+                return ModelDbKey.from_orm(self._obj)
+            if key == "onlineMetrics":
                 return TetrisOfflineMetrics.from_orm(self._obj)
         return super().get(key, default)
 
 
-class TetrisModelDbEntry(ModelDbEntry[TetrisOnlineMetrics, TetrisOfflineMetrics]):
-    numEpochsPlayed: int = 0
-    numBatchesTrained: int = 0
-    onlinePerformance: TetrisOnlineMetrics = TetrisOnlineMetrics()
-    offlinePerformance: TetrisOfflineMetrics = TetrisOfflineMetrics()
+class TetrisOnlineMetricsDbEntry(OnlineMetricsDbEntry[TetrisOnlineMetrics]):
+    onlineMetrics: TetrisOnlineMetrics
 
     class Config(ModelDbEntry.Config):
         """pydantic config class"""
 
-        getter_dict = TetrisModelEntryGetterDict
+        getter_dict = TetrisModelDbGetterDict
 
 
-class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisOfflineMetrics]):
+class TetrisOfflineMetricsDbEntry(OfflineMetricsDbEntry[TetrisOfflineMetrics]):
+    offlineMetrics: TetrisOfflineMetrics
+
+    class Config(ModelDbEntry.Config):
+        """pydantic config class"""
+
+        getter_dict = TetrisModelDbGetterDict
+
+
+class TetrisModelDbEntry(ModelDbEntry):
+    avgEpisodeLength: float | None = None
+    avgEpisodeScore: float | None = None
+    recencyWeightedAvgLoss: float | None = None
+    recencyWeightedAvgValidationQ: float | None = None
+
+    @classmethod
+    def fromMetrics(
+        cls,
+        dbKey: ModelDbKey,
+        onlineMetrics: TetrisOnlineMetrics | None = None,
+        offlineMetrics: TetrisOfflineMetrics | None = None,
+    ) -> TetrisModelDbEntry:
+        return TetrisModelDbEntry(
+            modelDbKey=dbKey,
+            numEpisodesPlayed=int(onlineMetrics is not None),
+            numEpochsTrained=int(offlineMetrics is not None),
+            avgEpisodeLength=None if onlineMetrics is None else onlineMetrics.numMoves,
+            avgEpisodeScore=None if onlineMetrics is None else onlineMetrics.score,
+            recencyWeightedAvgLoss=None if offlineMetrics is None else offlineMetrics.avgBatchLoss,
+            recencyWeightedAvgValidationQ=None if offlineMetrics is None else offlineMetrics.valEpisodeAvgMaxQ,
+        )
+
+    class Config(ModelDbEntry.Config):
+        """pydantic config class"""
+
+        getter_dict = TetrisModelDbGetterDict
+
+
+class TetrisModelService(ModelService[DeepQNetwork]):
     def __init__(self) -> None:
         self.dbPath = f"{DB_ROOT_PATH}/model.db"
         self.modelWeightsPathStub = f"{DB_ROOT_PATH}/models"
@@ -83,19 +128,34 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
                     tag TEXT NOT NULL,
                     version INTEGER NOT NULL,
                     weights_location TEXT NOT NULL,
-                    num_epochs_played INTEGER NOT NULL,
-                    num_batches_trained INTEGER NOT NULL,
-                    avg_epoch_length REAL,
-                    avg_epoch_score REAL,
-                    avg_training_loss REAL,
+                    num_episodes_played INTEGER NOT NULL,
+                    num_epochs_trained INTEGER NOT NULL,
+                    avg_episode_length REAL,
+                    avg_episode_score REAL,
+                    recency_weighted_avg_loss REAL,
+                    recency_weighted_avg_validation_q REAL,
                     PRIMARY KEY(tag, version)
                 );"""
             )
             cur.execute(
-                """CREATE TABLE IF NOT EXISTS loss_history (
+                """CREATE TABLE IF NOT EXISTS offline_metrics (
                     tag TEXT NOT NULL,
                     version INTEGER NOT NULL,
-                    training_loss REAL NOT NULL,
+                    epoch_number INTEGER NOT NULL,
+                    num_batches_trained INTEGER NOT NULL
+                    avg_batch_loss REAL NOT NULL,
+                    val_episode_avg_max_q REAL NOT NULL,
+                    validation_episode_id INTEGER NOT NULL
+                    FOREIGN KEY(tag, version) REFERENCES models(tag, version)
+                );"""
+            )
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS online_metrics (
+                    tag TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    episode_number INTEGER NOT NULL,
+                    num_moves INTEGER NOT NULL
+                    score INTEGER NOT NULL,
                     FOREIGN KEY(tag, version) REFERENCES models(tag, version)
                 );"""
             )
@@ -117,6 +177,10 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
         self.updateModel(newModelKey, policyModel=policyModel, targetModel=targetModel, optimizer=optimizer)
         return version
 
+    def getModelKey(self, modelTag: str, version: int) -> ModelDbKey:
+        weightsLocation = self._generateWeightsLocation(modelTag, version)
+        return ModelDbKey(tag=modelTag, version=version, weightsLocation=weightsLocation)
+
     def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
         with SqliteConnection(self.dbPath) as cur:
             res = cur.execute(
@@ -126,22 +190,24 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
             return None
         return ModelDbKey(tag=res[0], version=res[1], weightsLocation=res[2])
 
-    def getModelEntry(self, modelTag: str, version: int) -> TetrisModelDbEntry:
-        weightsLocation = self._generateWeightsLocation(modelTag, version)
-        key = ModelDbKey(tag=modelTag, version=version, weightsLocation=weightsLocation)
-        entry = self._fetchEntry(key)
-        if entry is None:
-            raise KeyError(f"Could not find model with tag {modelTag} and version {version}")
-        return entry
+    def getModelEntry(self, key: ModelDbKey) -> TetrisModelDbEntry | None:
+        with SqliteConnection(self.dbPath) as cur:
+            res = cur.execute(
+                f"""SELECT * FROM models WHERE tag = '{key.tag}' AND version = {key.version};"""
+            ).fetchone()
+        if res is None:
+            return None
+        return TetrisModelDbEntry.from_orm(TetrisModelDbRow(*res))
 
-    def deployModel(self, modelTag: str | None = None, version: int | None = None) -> int:
-        entry = self._getBestModel(modelTag, version)
+    def deployModel(self, key: ModelDbKey) -> None:
+        entry = self.getModelEntry(key)
+        if entry is None:
+            raise KeyError(f"Model {key} not found")
         if not os.path.exists(self.deployModelRootPath):
             os.makedirs(self.deployModelRootPath)
-        os.system(f"cp {entry.dbKey.policyModelLocation} {self.deployModelWeightsPath}")
+        os.system(f"cp {key.policyModelLocation} {self.deployModelWeightsPath}")
         with open(self.deployModelEntryPath, "w") as f:
             f.write(entry.json())
-        return entry.dbKey.version
 
     def updateModel(
         self,
@@ -149,102 +215,128 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
         policyModel: DeepQNetwork | None = None,
         targetModel: DeepQNetwork | None = None,
         optimizer: Optimizer | None = None,
-        numEpochsPlayed: int | None = None,
-        numBatchesTrained: int | None = None,
-        onlinePerformance: TetrisOnlineMetrics | None = None,
-        offlinePerformance: TetrisOfflineMetrics | None = None,
     ) -> None:
-        entry = TetrisModelDbEntry(
-            dbKey=key,
-            numEpochsPlayed=numEpochsPlayed or 0,
-            numBatchesTrained=numBatchesTrained or 0,
-            onlinePerformance=onlinePerformance or TetrisOnlineMetrics(),
-            offlinePerformance=offlinePerformance or TetrisOfflineMetrics(),
-        )
-        maybeExistingEntry = self._fetchEntry(key)
+        modelEntry = self.getModelEntry(key)
+        if modelEntry is None:
+            raise KeyError(f"Model {key} not found")
+        maybeExistingEntry = self.getModelEntry(key)
         if maybeExistingEntry is not None:
-            entry = maybeExistingEntry.updateWithNewValues(entry)
-        self._writeWeights(key, policyModel, targetModel, optimizer)
-        self._upsertToTable(entry)
+            modelEntry = maybeExistingEntry.updateWithNewValues(modelEntry)
+        self._writeModelWeights(key, policyModel, targetModel, optimizer)
+        self._upsertModelEntry(modelEntry)
 
-    def pushBatchLosses(self, modelKey: ModelDbKey, losses: list[float]) -> None:
-        query = "INSERT INTO loss_history (tag, version, training_loss) VALUES (?, ?, ?);"
-        values = [(modelKey.tag, modelKey.version, loss) for loss in losses]
+    def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: TetrisOnlineMetrics) -> None:
+        modelEntry = TetrisModelDbEntry.fromMetrics(key, onlineMetrics=onlineMetrics)
+        maybeExistingEntry = self.getModelEntry(key)
+        if maybeExistingEntry is not None:
+            modelEntry = maybeExistingEntry.updateWithNewValues(modelEntry)
+        self._upsertModelEntry(modelEntry)
+        onlineMetricsEntry = TetrisOnlineMetricsDbEntry(modelDbKey=key, onlineMetrics=onlineMetrics)
+        self._insertOnlineMetricsEntry(onlineMetricsEntry)
+
+    def publishOfflineMetrics(self, key: ModelDbKey, offlineMetrics: TetrisOfflineMetrics) -> None:
+        modelEntry = TetrisModelDbEntry.fromMetrics(key, offlineMetrics=offlineMetrics)
+        maybeExistingEntry = self.getModelEntry(key)
+        if maybeExistingEntry is not None:
+            modelEntry = maybeExistingEntry.updateWithNewValues(modelEntry)
+        self._upsertModelEntry(modelEntry)
+        offlineMetricsEntry = TetrisOfflineMetricsDbEntry(modelDbKey=key, offlineMetrics=offlineMetrics)
+        self._insertOfflineMetricsEntry(offlineMetricsEntry)
+
+    def _insertOnlineMetricsEntry(self, entry: TetrisOnlineMetricsDbEntry) -> None:
         with SqliteConnection(self.dbPath) as cur:
-            cur.executemany(query, values)
+            cur.execute(
+                f"""INSERT INTO online_metrics (
+                    tag,
+                    version,
+                    episode_number,
+                    num_moves,
+                    score
+                ) VALUES (
+                    '{entry.modelDbKey.tag}',
+                    '{entry.modelDbKey.version}',
+                    {entry.onlineMetrics.episodeNumber},
+                    {entry.onlineMetrics.numMoves},
+                    {entry.onlineMetrics.score}
+                )
+                ON CONFLICT (tag, version)
+                DO UPDATE SET
+                    episode_number=excluded.episode_number,
+                    num_moves=excluded.num_moves,
+                    score=excluded.score,
+                """
+            )
 
-    def _getBestModel(self, modelTag: str | None = None, version: int | None = None) -> TetrisModelDbEntry:
-        if modelTag is not None:
-            if version is not None:
-                with SqliteConnection(self.dbPath) as cur:
-                    res = cur.execute(
-                        f"""SELECT * FROM models WHERE tag = '{modelTag}' AND version = {version};"""
-                    ).fetchone()
-            else:
-                with SqliteConnection(self.dbPath) as cur:
-                    res = cur.execute(
-                        f"SELECT * FROM models WHERE tag='{modelTag}' ORDER BY avg_epoch_length DESC;"
-                    ).fetchone()
-        else:
-            if version is not None:
-                raise ValueError("Version cannot be specified without tag")
-            with SqliteConnection(self.dbPath) as cur:
-                res = cur.execute("SELECT * FROM models ORDER BY avg_epoch_length DESC;").fetchone()
-        if res is None:
-            raise KeyError("No best model found")
-        return TetrisModelDbEntry.from_orm(TetrisModelDbRow(*res))
-
-    def _fetchEntry(self, modelDbKey: ModelDbKey) -> TetrisModelDbEntry | None:
+    def _insertOfflineMetricsEntry(self, entry: TetrisOfflineMetricsDbEntry) -> None:
         with SqliteConnection(self.dbPath) as cur:
-            res = cur.execute(
-                f"""SELECT * FROM models WHERE tag = '{modelDbKey.tag}' AND version = {modelDbKey.version};"""
-            ).fetchone()
-        if res is None:
-            return None
-        return TetrisModelDbEntry.from_orm(TetrisModelDbRow(*res))
+            cur.execute(
+                f"""INSERT INTO offline_metrics (
+                    tag,
+                    version,
+                    epoch_number,
+                    num_batches_trained,
+                    avg_batch_loss,
+                    val_episode_avg_max_q,
+                    validation_episode_id
+                ) VALUES (
+                    '{entry.modelDbKey.tag}',
+                    '{entry.modelDbKey.version}',
+                    {entry.offlineMetrics.epochNumber},
+                    {entry.offlineMetrics.numBatchesTrained}
+                    {entry.offlineMetrics.avgBatchLoss},
+                    {entry.offlineMetrics.valEpisodeAvgMaxQ},
+                    {entry.offlineMetrics.validationEpisodeId}
+                )
+                ON CONFLICT (tag, version)
+                DO UPDATE SET
+                    epoch_number=exluded.epoch_number,
+                    num_batches_trained=exluded.num_batches_trained,
+                    avg_batch_loss=exluded.avg_batch_loss,
+                    val_episode_avg_max_q=exluded.val_episode_avg_max_q,
+                    validation_episode_id=excluded.validation_episode_id
+                """
+            )
 
-    def _upsertToTable(self, entry: TetrisModelDbEntry) -> None:
-        epochLength = (
-            entry.onlinePerformance.avgEpochLength if entry.onlinePerformance.avgEpochLength is not None else "NULL"
-        )
-        epochScore = (
-            entry.onlinePerformance.avgEpochScore if entry.onlinePerformance.avgEpochScore is not None else "NULL"
-        )
-        trainingLoss = (
-            entry.offlinePerformance.avgTrainingLoss if entry.offlinePerformance.avgTrainingLoss is not None else "NULL"
-        )
+    def _upsertModelEntry(self, entry: TetrisModelDbEntry) -> None:
+        episodeLength = entry.avgEpisodeLength if entry.avgEpisodeLength is not None else "NULL"
+        episodeScore = entry.avgEpisodeScore if entry.avgEpisodeScore is not None else "NULL"
+        trainingLoss = entry.recencyWeightedAvgLoss if entry.recencyWeightedAvgLoss is not None else "NULL"
+        avgQ = entry.recencyWeightedAvgValidationQ if entry.recencyWeightedAvgValidationQ is not None else "NULL"
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 f"""INSERT INTO models (
                     tag,
                     version,
                     weights_location,
-                    num_epochs_played,
-                    num_batches_trained,
-                    avg_epoch_length,
-                    avg_epoch_score,
-                    avg_training_loss
+                    num_episodes_played,
+                    num_epochs_trained,
+                    avg_episode_length,
+                    avg_episode_score,
+                    recency_weighted_avg_loss,
+                    recency_weighted_avg_validation_q
                 ) VALUES (
-                    '{entry.dbKey.tag}',
-                    '{entry.dbKey.version}',
-                    '{entry.dbKey.weightsLocation}',
-                    {entry.numEpochsPlayed},
-                    {entry.numBatchesTrained},
-                    {epochLength},
-                    {epochScore},
-                    {trainingLoss}
+                    '{entry.modelDbKey.tag}',
+                    '{entry.modelDbKey.version}',
+                    '{entry.modelDbKey.weightsLocation}',
+                    {entry.numEpisodesPlayed},
+                    {entry.numEpochsTrained},
+                    {episodeLength},
+                    {episodeScore},
+                    {trainingLoss},
+                    {avgQ}
                 )
                 ON CONFLICT (tag, version)
                 DO UPDATE SET
                     weights_location=excluded.weights_location,
-                    num_epochs_played=excluded.num_epochs_played,
-                    num_batches_trained=excluded.num_batches_trained,
-                    avg_epoch_length=excluded.avg_epoch_length,
-                    avg_epoch_score=excluded.avg_epoch_score,
-                    avg_training_loss=excluded.avg_training_loss;"""
+                    num_episodes_played=excluded.num_episodes_played,
+                    num_epochs_trained=excluded.num_epochs_trained,
+                    avg_episode_length=excluded.avg_episode_length,
+                    avg_episode_score=excluded.avg_episode_score,
+                    recency_weighted_avg_loss=excluded.recency_weighted_avg_loss,
+                    recency_weighted_avg_validation_q=excluded.recency_weighted_avg_validation_q;"""
             )
 
-    def _writeWeights(
+    def _writeModelWeights(
         self,
         key: ModelDbKey,
         policyModel: DeepQNetwork | None = None,

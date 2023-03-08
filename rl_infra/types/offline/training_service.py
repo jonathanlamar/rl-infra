@@ -3,17 +3,15 @@ from typing import Protocol, TypeVar
 import torch
 from torch.optim import Optimizer
 
-from rl_infra.types.base_types import Metrics
 from rl_infra.types.offline.data_service import DataService
-from rl_infra.types.offline.model_service import ModelService
+from rl_infra.types.offline.model_service import ModelDbKey, ModelService
 
 Model = TypeVar("Model", bound=torch.nn.Module, covariant=True)
-OfflineMetrics = TypeVar("OfflineMetrics", bound=Metrics, covariant=True)
 MService = TypeVar("MService", bound=ModelService)
 DService = TypeVar("DService", bound=DataService)
 
 
-class TrainingService(Protocol[Model, OfflineMetrics, MService, DService]):
+class TrainingService(Protocol[Model, MService, DService]):
     modelService: MService
     dataService: DService
     device: torch.device
@@ -30,5 +28,15 @@ class TrainingService(Protocol[Model, OfflineMetrics, MService, DService]):
     def coldStart(self, modelTag: str) -> int:
         ...
 
-    def retrainAndPublish(self, modelTag: str, version: int, batchSize: int, numBatches: int) -> OfflineMetrics:
+    def retrainAndPublish(
+        self,
+        modelDbKey: ModelDbKey,
+        episodeNumber: int,
+        batchSize: int,
+        numBatches: int,
+        validationEpisodeId: int | None = None,
+    ) -> None:
+        ...
+
+    def validateOnEpisode(self, validationEpisodeId: int | None = None) -> tuple[float, int]:
         ...

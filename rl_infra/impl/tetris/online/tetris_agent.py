@@ -14,31 +14,28 @@ from rl_infra.impl.tetris.online.config import (
     MODEL_WEIGHTS_PATH,
 )
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
-from rl_infra.types.online.agent import Agent
+from rl_infra.types.online.agent import Agent, OfflineMetrics, OnlineMetrics
 
 
-class TetrisAgent(Agent[TetrisState, TetrisAction]):
-    policy: DeepQNetwork
-    # Make sure the models always see the same order
-    possibleActions = list(sorted(TetrisAction))
-    useGreedyPolicy: bool
+class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
+    possibleActions = list(sorted(TetrisAction))  # Make sure the models always see the same order
 
-    def __init__(self, device: torch.device, useGreedyPolicy: bool = False) -> None:
+    def __init__(self, device: torch.device) -> None:
         self.policy = DeepQNetwork(
             arrayHeight=BOARD_SIZE[0],
-            arrayWidth=BOARD_SIZE[1],
+            arrayWidth=BOARD_SIZE[1] + 1,
             numOutputs=5,
             device=device,
         )
         self.policy.load_state_dict(torch.load(MODEL_WEIGHTS_PATH))
         entry = TetrisModelDbEntry.parse_file(MODEL_ENTRY_PATH)
-        self.dbKey = entry.dbKey
-        self.numEpochsPlayed = entry.numEpochsPlayed
-        self.useGreedyPolicy = useGreedyPolicy
+        self.dbKey = entry.modelDbKey
+        self.numEpisodesPlayed = entry.numEpisodesPlayed
+        self.numEpochsTrained = entry.numEpochsTrained
         self.epsilon = self._updateEpsilon()
 
-    def startNewEpoch(self) -> None:
-        self.numEpochsPlayed += 1
+    def startNewEpisode(self) -> None:
+        self.numEpisodesPlayed += 1
         self.epsilon = self._updateEpsilon()
 
     def choosePolicyAction(self, state: TetrisState) -> TetrisAction:
@@ -54,8 +51,18 @@ class TetrisAgent(Agent[TetrisState, TetrisAction]):
         return random.choice(self.possibleActions)
 
     def _updateEpsilon(self) -> float:
-        if self.useGreedyPolicy:
-            return 0
         return FINAL_EPSILON + (INITIAL_EPSILON - FINAL_EPSILON) * math.exp(
-            -1.0 * self.numEpochsPlayed / EPSILON_DECAY_RATE
+            -1.0 * self.numEpisodesPlayed / EPSILON_DECAY_RATE
         )
+
+
+class TetrisOnlineMetrics(OnlineMetrics):
+    numMoves: int
+    score: int
+
+
+class TetrisOfflineMetrics(OfflineMetrics):
+    numBatchesTrained: int
+    avgBatchLoss: float
+    validationEpisodeId: int
+    valEpisodeAvgMaxQ: float  # TODO: This needs a better name

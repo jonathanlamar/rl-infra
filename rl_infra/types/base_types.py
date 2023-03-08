@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import asdict
 from typing import Any, Generic, Type, TypeVar
 
@@ -61,16 +60,3 @@ class BasePydanticConfig:
 class SerializableDataClass(BaseModel):
     class Config(BasePydanticConfig):
         pass
-
-
-class Metrics(ABC, SerializableDataClass):
-    @abstractmethod
-    def updateWithNewValues(self, other: Self) -> Self:
-        ...
-
-    @staticmethod
-    def avgWithoutNone(num1: float | None, num2: float | None) -> float | None:
-        nums = [x for x in [num1, num2] if x is not None]
-        if not nums:
-            return None
-        return sum(nums) / len(nums)

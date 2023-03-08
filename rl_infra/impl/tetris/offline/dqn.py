@@ -27,7 +27,7 @@ class DeepQNetwork(nn.Module):
 
         convw = self._conv2dSizeOut(self._conv2dSizeOut(arrayWidth))
         convh = self._conv2dSizeOut(self._conv2dSizeOut(arrayHeight))
-        self.linear1 = nn.Linear(convw * convh * 16, 32)
+        self.linear1 = nn.Linear(convw * convh * 8, 32)
         self.linear2 = nn.Linear(32, numOutputs)
 
     # Called with either one element to determine next action, or a batch

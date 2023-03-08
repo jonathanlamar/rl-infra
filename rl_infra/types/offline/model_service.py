@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from abc import ABC
 from typing import Generic, Protocol, TypeVar
 
 from torch.nn import Module
 from torch.optim import Optimizer
 from typing_extensions import Self
 
-from rl_infra.types.base_types import Metrics, SerializableDataClass
+from rl_infra.types.base_types import SerializableDataClass
+from rl_infra.types.online.agent import OfflineMetrics, OnlineMetrics
 
 
 class ModelDbKey(SerializableDataClass):
@@ -28,27 +28,33 @@ class ModelDbKey(SerializableDataClass):
         return f"{self.weightsLocation}/optimizer.pt"
 
 
-OnlineMetrics = TypeVar("OnlineMetrics", bound=Metrics, contravariant=True)
-OfflineMetrics = TypeVar("OfflineMetrics", bound=Metrics, contravariant=True)
+OnM_co = TypeVar("OnM_co", bound=OnlineMetrics, covariant=True)
+OffM_co = TypeVar("OffM_co", bound=OfflineMetrics, covariant=True)
 
 
-class ModelDbEntry(ABC, SerializableDataClass, Generic[OnlineMetrics, OfflineMetrics]):
-    dbKey: ModelDbKey
-    numEpochsPlayed: int
-    numBatchesTrained: int
-    onlinePerformance: OnlineMetrics
-    offlinePerformance: OfflineMetrics
+class OfflineMetricsDbEntry(SerializableDataClass, Generic[OffM_co]):
+    modelDbKey: ModelDbKey
+    offlineMetrics: OffM_co
+
+
+class OnlineMetricsDbEntry(SerializableDataClass, Generic[OnM_co]):
+    modelDbKey: ModelDbKey
+    onlineMetrics: OnM_co
+
+
+class ModelDbEntry(SerializableDataClass):
+    modelDbKey: ModelDbKey
+    numEpisodesPlayed: int
+    numEpochsTrained: int
 
     def updateWithNewValues(self, other: Self) -> Self:
-        if self.dbKey != other.dbKey:
+        if self.modelDbKey != other.modelDbKey:
             raise KeyError("Cannot average incompatible model tags")
 
         return self.__class__(
-            dbKey=self.dbKey,
-            numEpochsPlayed=self.numEpochsPlayed + other.numEpochsPlayed,
-            numBatchesTrained=self.numBatchesTrained + other.numBatchesTrained,
-            onlinePerformance=self.onlinePerformance.updateWithNewValues(other.onlinePerformance),
-            offlinePerformance=self.offlinePerformance.updateWithNewValues(other.offlinePerformance),
+            modelDbKey=self.modelDbKey,
+            numEpisodesPlayed=self.numEpisodesPlayed + other.numEpisodesPlayed,
+            numEpochsTrained=self.numEpochsTrained + other.numEpochsTrained,
         )
 
 
@@ -63,15 +69,20 @@ class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
         targetModel: Model | None,
         optimizer: Optimizer | None,
     ) -> int:
+        """Publish new version of model with tag modelTag.  Optionally provide weights for policy mode, target model,
+        or optimizer.  Otherwise random weights are initialized.  Returns version of newly published model."""
+        ...
+
+    def getModelKey(self, modelTag: str, version: int) -> ModelDbKey:
         ...
 
     def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
         ...
 
-    def getModelEntry(self, modelTag: str, version: int) -> ModelDbEntry[OnlineMetrics, OfflineMetrics]:
+    def getModelEntry(self, key: ModelDbKey) -> ModelDbEntry | None:
         ...
 
-    def deployModel(self, modelTag: str | None, version: int | None) -> int:
+    def deployModel(self, key: ModelDbKey) -> None:
         ...
 
     def updateModel(
@@ -80,12 +91,11 @@ class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
         policyModel: Model | None,
         targetModel: Model | None,
         optimizer: Optimizer | None,
-        numEpochsPlayed: int | None,
-        numBatchesTrained: int | None,
-        onlinePerformance: OnlineMetrics | None,
-        offlinePerformance: OfflineMetrics | None,
     ) -> None:
         ...
 
-    def pushBatchLosses(self, modelKey: ModelDbKey, losses: list[float]) -> None:
+    def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: OnlineMetrics) -> None:
+        ...
+
+    def publishOfflineMetrics(self, key: ModelDbKey, offlineMetrics: OfflineMetrics) -> None:
         ...

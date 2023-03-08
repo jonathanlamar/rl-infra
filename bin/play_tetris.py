@@ -34,8 +34,8 @@ def mainLoop(env: TetrisEnvironment, dataService: TetrisDataService):
         sleep(0.05)
 
     print("Saving gameplay.")
-    epochRecord = env.currentEpochRecord
-    dataService.pushEpoch(epochRecord)
+    episodeRecord = env.currentEpisodeRecord
+    dataService.pushEpisode(episodeRecord)
 
 
 if __name__ == "__main__":

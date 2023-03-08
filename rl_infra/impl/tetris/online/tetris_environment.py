@@ -9,32 +9,21 @@ from tetris.config.config import BOARD_SIZE
 from tetris.game import GameState
 from tetris.utils.utils import KeyPress
 
+from rl_infra.impl.tetris.online.tetris_agent import TetrisOnlineMetrics
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
-from rl_infra.types.base_types import Metrics
-from rl_infra.types.online.environment import Environment, EpochRecord, GameplayRecord
+from rl_infra.types.online.environment import Environment, EpisodeRecord, GameplayRecord
 
 
-class TetrisOnlineMetrics(Metrics):
-    avgEpochLength: float | None = None
-    avgEpochScore: float | None = None
-
-    def updateWithNewValues(self, other: TetrisOnlineMetrics) -> TetrisOnlineMetrics:
-        """For each metric, compute average.  This results in an exponential recency weighted average."""
-
+class TetrisEpisodeRecord(EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
+    def computeOnlineMetrics(self) -> TetrisOnlineMetrics:
         return TetrisOnlineMetrics(
-            avgEpochLength=TetrisOnlineMetrics.avgWithoutNone(self.avgEpochLength, other.avgEpochLength),
-            avgEpochScore=TetrisOnlineMetrics.avgWithoutNone(self.avgEpochScore, other.avgEpochScore),
+            episodeNumber=self.episodeNumber,
+            numMoves=len(self.moves),
+            score=max([move.newState.score for move in self.moves]),
         )
 
 
-class TetrisEpochRecord(EpochRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
-    def computeOnlineMetrics(self) -> TetrisOnlineMetrics:
-        finalScore = max([move.newState.score for move in self.moves])
-        return TetrisOnlineMetrics(avgEpochLength=len(self.moves), avgEpochScore=finalScore)
-
-
-class TetrisGameplayRecord(GameplayRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
-    pass
+TetrisGameplayRecord = GameplayRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]
 
 
 class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetrics]):
@@ -42,13 +31,13 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
     humanPlayer: bool
     stateBuffer: NDArray[np.uint8]
 
-    def __init__(self, humanPlayer: bool = False) -> None:
+    def __init__(self, episodeNumber: int = 0, humanPlayer: bool = False) -> None:
         self.humanPlayer = humanPlayer
         self.gameState = GameState()
         self.stateBuffer = np.zeros((2, BOARD_SIZE[0], BOARD_SIZE[1] + 1), dtype=np.uint8)
         self.currentState = self._getCurrentState()
-        self.currentGameplayRecord = TetrisGameplayRecord(epochs=[])
-        self.currentEpochRecord = TetrisEpochRecord(moves=[])
+        self.currentGameplayRecord = TetrisGameplayRecord(episodes=[])
+        self.currentEpisodeRecord = TetrisEpisodeRecord(episodeNumber=episodeNumber, moves=[])
 
     def _getCurrentState(self) -> TetrisState:
         return TetrisState(
@@ -78,7 +67,7 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
             newState=self.currentState,
             reward=reward,
         )
-        self.currentEpochRecord = self.currentEpochRecord.append(transition)
+        self.currentEpisodeRecord = self.currentEpisodeRecord.append(transition)
         return transition
 
     def _updateBuffer(self) -> None:
@@ -100,8 +89,10 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
             return -1
         return newState.score - oldState.score
 
-    def startNewEpoch(self) -> None:
+    def startNewEpisode(self) -> None:
         self.gameState = GameState()
-        self.currentState = TetrisState.from_orm(self.gameState)
-        self.currentGameplayRecord = self.currentGameplayRecord.appendEpoch(self.currentEpochRecord)
-        self.currentEpochRecord = TetrisEpochRecord(moves=[])
+        self.currentState = self._getCurrentState()
+        self.currentGameplayRecord = self.currentGameplayRecord.appendEpisode(self.currentEpisodeRecord)
+        self.currentEpisodeRecord = TetrisEpisodeRecord(
+            episodeNumber=self.currentEpisodeRecord.episodeNumber + 1, moves=[]
+        )

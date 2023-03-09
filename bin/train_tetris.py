@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import time
-from IPython.terminal.embed import embed
 
 import torch
 

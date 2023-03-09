@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import argparse
+import time
+from IPython.terminal.embed import embed
 
 import torch
 
@@ -37,16 +39,7 @@ def getParser() -> argparse.ArgumentParser:
 
 def deployAndLoadModel(modelDbKey: ModelDbKey) -> TetrisAgent:
     modelService.deployModel(modelDbKey)
-    print(f"Deployed version {modelDbKey.version} of model {modelDbKey.tag}")
-
-    print("Loading deployed model")
-    agent = TetrisAgent(device=device)
-    print(
-        f"Model loaded.  Agent has played {agent.numEpisodesPlayed} episodes and trained {agent.numEpochsTrained} "
-        "epochs."
-    )
-
-    return agent
+    return TetrisAgent(device=device)
 
 
 def playEpisodeWithRetraining(
@@ -59,7 +52,6 @@ def playEpisodeWithRetraining(
         action = agent.chooseAction(env.currentState)
         transition = env.step(action)
         gameIsOver = transition.state.isTerminal
-        print("Retraining model")
         trainingService.retrainAndPublish(
             modelDbKey=agent.dbKey,
             epochNumber=agent.numEpochsTrained,
@@ -68,32 +60,7 @@ def playEpisodeWithRetraining(
         )
         agent = deployAndLoadModel(agent.dbKey)
 
-    print(
-        f"Episode {agent.numEpisodesPlayed} done. "
-        f"Moves: {len(env.currentEpisodeRecord.moves)}, "
-        f"Score: {env.currentState.score}. "
-        f"Epsilon: {agent.epsilon:.4f}."
-    )
-
-    print("Saving episode")
-    dataService.pushEpisode(env.currentEpisodeRecord)
-
-    env.startNewEpisode()
-    agent.startNewEpisode()
-
     return agent, env
-
-
-def updateOnlineMetrics(modelDbKey: ModelDbKey, env: TetrisEnvironment, modelService: TetrisModelService) -> None:
-    print("Updating online metrics for model")
-    metrics = [ep.computeOnlineMetrics() for ep in env.currentGameplayRecord.episodes]
-    avgEpisodeLength = sum([m.numMoves for m in metrics]) / len(metrics)
-    avgScore = sum([m.score for m in metrics]) / len(metrics)
-    print(f"Average episode length: {avgEpisodeLength:0.4f}.")
-    print(f"Average score: {avgScore:0.4f}.")
-
-    for m in metrics:
-        modelService.publishOnlineMetrics(modelDbKey, m)
 
 
 if __name__ == "__main__":
@@ -106,12 +73,40 @@ if __name__ == "__main__":
     trainingService = TetrisTrainingService(device=device)
 
     modelDbKey = modelService.getModelKey(args.model_tag, args.version)
+    print(f"Deploying version {modelDbKey.version} of model {modelDbKey.tag}")
     agent = deployAndLoadModel(modelDbKey)
-    env = TetrisEnvironment()
+    env = TetrisEnvironment(episodeNumber=agent.numEpisodesPlayed)
+    modelEntry = modelService.getModelEntry(modelDbKey)
 
     for _ in range(args.num_episodes):
+        assert modelEntry is not None, "Model entry should exist"
+        print(
+            f"Epsilon: {agent.epsilon:.4f}\n"
+            f"Num epochs trained: {modelEntry.numEpochsTrained:.4f}\n"
+            f"Average episodes lenghth: {modelEntry.avgEpisodeLength or 0:.4f}\n"
+            f"Recency weighted average loss: {modelEntry.recencyWeightedAvgLoss or 0:.4f}\n"
+            f"Recency weighted validation average max Q: {modelEntry.recencyWeightedAvgValidationQ or 0:.4f}\n"
+        )
+        print(f"Playing episode {modelEntry.numEpisodesPlayed}")
         agent, env = playEpisodeWithRetraining(agent, env, args)
-        updateOnlineMetrics(agent.dbKey, env, modelService)
+        lastEpisode = env.currentEpisodeRecord
+        onlineMetrics = lastEpisode.computeOnlineMetrics()
+        env.startNewEpisode()
+        agent.startNewEpisode()
+
+        print(
+            f"Episodes played: {agent.numEpisodesPlayed}\n"
+            f"Epochs trained: {agent.numEpochsTrained}\n"
+            f"Moves: {onlineMetrics.numMoves}\n"
+            f"Score: {onlineMetrics.score}\n"
+        )
+
+        print("Saving episode")
+        dataService.pushEpisode(env.currentEpisodeRecord)
+
+        print("Updating online metrics for model")
+        modelService.publishOnlineMetrics(modelDbKey, onlineMetrics)
+        modelEntry = modelService.getModelEntry(modelDbKey)
 
     print("Deleting old training examples")
     dataService.keepNewRowsDeleteOld(sgn=0)

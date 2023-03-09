@@ -31,7 +31,7 @@ class TetrisModelDbRow(NamedTuple):
     version: int
     weightsLocation: str
     numEpisodesPlayed: int
-    numBatchesTrained: int
+    numEpochsTrained: int
     avgEpisodeLength: float | None
     avgEpisodeScore: float | None
     recencyWeightedAvgLoss: float | None
@@ -61,17 +61,17 @@ class TetrisModelDbGetterDict(GetterDict):
 
     def get(self, key: str, default: Any = None) -> Any:
         if isinstance(self._obj, TetrisModelDbRow):
-            if key == "dbKey":
+            if key == "modelDbKey":
                 return ModelDbKey.from_orm(self._obj)
             if key == "onlinePerformance":
                 return TetrisOnlineMetrics.from_orm(self._obj)
         if isinstance(self._obj, TetrisOfflineMetricsDbRow):
-            if key == "dbKey":
+            if key == "modelDbKey":
                 return ModelDbKey.from_orm(self._obj)
             if key == "offlineMetrics":
                 return TetrisOfflineMetrics.from_orm(self._obj)
         if isinstance(self._obj, TetrisOnlineMetricsDbRow):
-            if key == "dbKey":
+            if key == "modelDbKey":
                 return ModelDbKey.from_orm(self._obj)
             if key == "onlineMetrics":
                 return TetrisOfflineMetrics.from_orm(self._obj)
@@ -102,15 +102,57 @@ class TetrisModelDbEntry(ModelDbEntry):
     recencyWeightedAvgLoss: float | None = None
     recencyWeightedAvgValidationQ: float | None = None
 
-    @classmethod
+    def updateWithNewValues(self, other: TetrisModelDbEntry) -> TetrisModelDbEntry:
+        if self.modelDbKey != other.modelDbKey:
+            raise KeyError("Cannot average incompatible model tags")
+
+        # These should never be in danger of invalid values, but it doesn't hurt.
+        assert self.numEpisodesPlayed >= 0
+        assert self.numEpochsTrained >= 0
+        assert other.numEpisodesPlayed >= 0
+        assert other.numEpochsTrained >= 0
+        assert (self.numEpisodesPlayed == 0) == (self.avgEpisodeLength is None)
+        assert (self.numEpisodesPlayed == 0) == (self.avgEpisodeScore is None)
+        assert (self.numEpochsTrained == 0) == (self.recencyWeightedAvgLoss is None)
+        assert (self.numEpochsTrained == 0) == (self.recencyWeightedAvgValidationQ is None)
+
+        # This function should never fail if the above assert pass
+        def weightedAvg(avg1: float | None, count1: int, avg2: float | None, count2: int) -> float | None:
+            if avg1 is None:
+                return avg2
+            if avg2 is None:
+                return avg1
+            return (avg1 * count1 + avg2 * count2) / (count1 + count2)
+
+        return self.__class__(
+            modelDbKey=self.modelDbKey,
+            numEpisodesPlayed=self.numEpisodesPlayed + other.numEpisodesPlayed,
+            numEpochsTrained=self.numEpochsTrained + other.numEpochsTrained,
+            avgEpisodeLength=weightedAvg(
+                self.avgEpisodeLength, self.numEpisodesPlayed, other.avgEpisodeLength, other.numEpisodesPlayed
+            ),
+            avgEpisodeScore=weightedAvg(
+                self.avgEpisodeScore, self.numEpisodesPlayed, other.avgEpisodeScore, other.numEpisodesPlayed
+            ),
+            recencyWeightedAvgLoss=weightedAvg(
+                self.recencyWeightedAvgLoss, self.numEpochsTrained, other.recencyWeightedAvgLoss, other.numEpochsTrained
+            ),
+            recencyWeightedAvgValidationQ=weightedAvg(
+                self.recencyWeightedAvgValidationQ,
+                self.numEpochsTrained,
+                other.recencyWeightedAvgValidationQ,
+                other.numEpochsTrained,
+            ),
+        )
+
+    @staticmethod
     def fromMetrics(
-        cls,
-        dbKey: ModelDbKey,
+        modelDbKey: ModelDbKey,
         onlineMetrics: TetrisOnlineMetrics | None = None,
         offlineMetrics: TetrisOfflineMetrics | None = None,
     ) -> TetrisModelDbEntry:
         return TetrisModelDbEntry(
-            modelDbKey=dbKey,
+            modelDbKey=modelDbKey,
             numEpisodesPlayed=int(onlineMetrics is not None),
             numEpochsTrained=int(offlineMetrics is not None),
             avgEpisodeLength=None if onlineMetrics is None else onlineMetrics.numMoves,

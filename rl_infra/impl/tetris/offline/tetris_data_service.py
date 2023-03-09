@@ -61,19 +61,19 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
 
     def pushValidationEpisode(self, episode: EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
         with SqliteConnection(self.dbPath) as cur:
-            maxId = cur.execute("SELECT MAX(episode_id) FROM validation_data;").fetchone()
+            maxId = cur.execute("SELECT MAX(episode_id) FROM validation_data;").fetchone()[0]
         if maxId is None:
             id = 0
         else:
-            id = maxId[0] + 1
+            id = maxId + 1
         query = """
-            INSERT INTO data (
+            INSERT INTO validation_data (
                 episode_id,
                 state,
                 action,
                 new_state,
                 reward
-            ) VALUES (?, ?, ?, ?);"""
+            ) VALUES (?, ?, ?, ?, ?);"""
         values = [(id,) + entry.toDbRow() for entry in episode.moves]
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
@@ -83,11 +83,11 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
     ) -> EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]:
         if episodeId is None:
             with SqliteConnection(self.dbPath) as cur:
-                maxId = cur.execute("SELECT MAX(episode_id) FROM validation_data;").fetchone()
+                maxId = cur.execute("SELECT MAX(episode_id) FROM validation_data;").fetchone()[0]
             if maxId is None:
                 raise KeyError("No validation episodes")
             else:
-                episodeId = maxId[0]
+                episodeId = maxId
         with SqliteConnection(self.dbPath) as cur:
             rows = cur.execute(
                 f"SELECT state, action, new_state, reward FROM validation_data WHERE episode_id = {episodeId}"

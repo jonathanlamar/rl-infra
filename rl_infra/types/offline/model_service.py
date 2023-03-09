@@ -8,9 +8,11 @@ from torch.optim import Optimizer
 from rl_infra.types.offline.schema import ModelDbEntry, ModelDbKey, OfflineMetrics, OnlineMetrics
 
 Model = TypeVar("Model", bound=Module, contravariant=True)
+OnM = TypeVar("OnM", bound=OnlineMetrics, contravariant=True)
+OffM = TypeVar("OffM", bound=OfflineMetrics, contravariant=True)
 
 
-class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
+class ModelService(Protocol[Model, OnM, OffM]):
     def publishNewModel(
         self,
         modelTag: str,
@@ -34,7 +36,7 @@ class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
     def deployModel(self, key: ModelDbKey) -> None:
         ...
 
-    def updateModel(
+    def updateModelWeights(
         self,
         key: ModelDbKey,
         policyModel: Model | None,
@@ -43,8 +45,8 @@ class ModelService(Protocol[Model, OnlineMetrics, OfflineMetrics]):
     ) -> None:
         ...
 
-    def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: OnlineMetrics) -> None:
+    def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: OnM) -> None:
         ...
 
-    def publishOfflineMetrics(self, key: ModelDbKey, offlineMetrics: OfflineMetrics) -> None:
+    def publishOfflineMetrics(self, key: ModelDbKey, offlineMetrics: OffM) -> None:
         ...

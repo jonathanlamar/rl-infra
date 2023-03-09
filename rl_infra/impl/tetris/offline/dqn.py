@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.nn.functional import relu, sigmoid
+from torch import relu, sigmoid
 
 
 class DeepQNetwork(nn.Module):

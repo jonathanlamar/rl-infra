@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
 from typing_extensions import Self
@@ -48,17 +48,12 @@ class OnlineMetricsDbEntry(SerializableDataClass, Generic[OnM_co]):
     onlineMetrics: OnM_co
 
 
-class ModelDbEntry(SerializableDataClass):
+class ModelDbEntry(ABC, SerializableDataClass):
     modelDbKey: ModelDbKey
     numEpisodesPlayed: int
     numEpochsTrained: int
+    # Other metrics vary by implementation
 
+    @abstractmethod
     def updateWithNewValues(self, other: Self) -> Self:
-        if self.modelDbKey != other.modelDbKey:
-            raise KeyError("Cannot average incompatible model tags")
-
-        return self.__class__(
-            modelDbKey=self.modelDbKey,
-            numEpisodesPlayed=self.numEpisodesPlayed + other.numEpisodesPlayed,
-            numEpochsTrained=self.numEpochsTrained + other.numEpochsTrained,
-        )
+        ...

@@ -12,14 +12,14 @@ from rl_infra.impl.tetris.offline.tetris_schema import (
     TetrisModelDbRow,
     TetrisOfflineMetrics,
     TetrisOfflineMetricsDbEntry,
+    TetrisOnlineMetrics,
     TetrisOnlineMetricsDbEntry,
 )
 from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
-from rl_infra.impl.tetris.online.tetris_environment import TetrisOnlineMetrics
 from rl_infra.types.offline import ModelDbKey, ModelService, SqliteConnection
 
 
-class TetrisModelService(ModelService[DeepQNetwork]):
+class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisOfflineMetrics]):
     def __init__(self) -> None:
         self.dbPath = f"{DB_ROOT_PATH}/model.db"
         self.modelWeightsPathStub = f"{DB_ROOT_PATH}/models"
@@ -46,10 +46,11 @@ class TetrisModelService(ModelService[DeepQNetwork]):
                     tag TEXT NOT NULL,
                     version INTEGER NOT NULL,
                     epoch_number INTEGER NOT NULL,
-                    num_batches_trained INTEGER NOT NULL
+                    num_batches_trained INTEGER NOT NULL,
                     avg_batch_loss REAL NOT NULL,
                     val_episode_avg_max_q REAL NOT NULL,
-                    validation_episode_id INTEGER NOT NULL
+                    validation_episode_id INTEGER NOT NULL,
+                    PRIMARY KEY(tag, version, epoch_number),
                     FOREIGN KEY(tag, version) REFERENCES models(tag, version)
                 );"""
             )
@@ -58,8 +59,9 @@ class TetrisModelService(ModelService[DeepQNetwork]):
                     tag TEXT NOT NULL,
                     version INTEGER NOT NULL,
                     episode_number INTEGER NOT NULL,
-                    num_moves INTEGER NOT NULL
+                    num_moves INTEGER NOT NULL,
                     score INTEGER NOT NULL,
+                    PRIMARY KEY(tag, version, episode_number),
                     FOREIGN KEY(tag, version) REFERENCES models(tag, version)
                 );"""
             )
@@ -78,7 +80,9 @@ class TetrisModelService(ModelService[DeepQNetwork]):
             version = 0
         weightsLocation = self._generateWeightsLocation(modelTag, version)
         newModelKey = ModelDbKey(tag=modelTag, version=version, weightsLocation=weightsLocation)
-        self.updateModel(newModelKey, policyModel=policyModel, targetModel=targetModel, optimizer=optimizer)
+        modelEntry = TetrisModelDbEntry(modelDbKey=newModelKey, numEpisodesPlayed=0, numEpochsTrained=0)
+        self._upsertModelEntry(modelEntry)
+        self.updateModelWeights(newModelKey, policyModel=policyModel, targetModel=targetModel, optimizer=optimizer)
         return version
 
     def getModelKey(self, modelTag: str, version: int) -> ModelDbKey:
@@ -113,21 +117,21 @@ class TetrisModelService(ModelService[DeepQNetwork]):
         with open(self.deployModelEntryPath, "w") as f:
             f.write(entry.json())
 
-    def updateModel(
+    def updateModelWeights(
         self,
         key: ModelDbKey,
         policyModel: DeepQNetwork | None = None,
         targetModel: DeepQNetwork | None = None,
         optimizer: Optimizer | None = None,
     ) -> None:
-        modelEntry = self.getModelEntry(key)
-        if modelEntry is None:
-            raise KeyError(f"Model {key} not found")
-        maybeExistingEntry = self.getModelEntry(key)
-        if maybeExistingEntry is not None:
-            modelEntry = maybeExistingEntry.updateWithNewValues(modelEntry)
-        self._writeModelWeights(key, policyModel, targetModel, optimizer)
-        self._upsertModelEntry(modelEntry)
+        if not os.path.exists(key.weightsLocation):
+            os.makedirs(key.weightsLocation)
+        if policyModel is not None:
+            torch.save(policyModel.state_dict(), key.policyModelLocation)
+        if targetModel is not None:
+            torch.save(targetModel.state_dict(), key.targetModelLocation)
+        if optimizer is not None:
+            torch.save(optimizer.state_dict(), key.optimizerLocation)
 
     def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: TetrisOnlineMetrics) -> None:
         modelEntry = TetrisModelDbEntry.fromMetrics(key, onlineMetrics=onlineMetrics)
@@ -162,13 +166,7 @@ class TetrisModelService(ModelService[DeepQNetwork]):
                     {entry.onlineMetrics.episodeNumber},
                     {entry.onlineMetrics.numMoves},
                     {entry.onlineMetrics.score}
-                )
-                ON CONFLICT (tag, version)
-                DO UPDATE SET
-                    episode_number=excluded.episode_number,
-                    num_moves=excluded.num_moves,
-                    score=excluded.score,
-                """
+                );"""
             )
 
     def _insertOfflineMetricsEntry(self, entry: TetrisOfflineMetricsDbEntry) -> None:
@@ -186,19 +184,11 @@ class TetrisModelService(ModelService[DeepQNetwork]):
                     '{entry.modelDbKey.tag}',
                     '{entry.modelDbKey.version}',
                     {entry.offlineMetrics.epochNumber},
-                    {entry.offlineMetrics.numBatchesTrained}
+                    {entry.offlineMetrics.numBatchesTrained},
                     {entry.offlineMetrics.avgBatchLoss},
                     {entry.offlineMetrics.valEpisodeAvgMaxQ},
                     {entry.offlineMetrics.validationEpisodeId}
-                )
-                ON CONFLICT (tag, version)
-                DO UPDATE SET
-                    epoch_number=exluded.epoch_number,
-                    num_batches_trained=exluded.num_batches_trained,
-                    avg_batch_loss=exluded.avg_batch_loss,
-                    val_episode_avg_max_q=exluded.val_episode_avg_max_q,
-                    validation_episode_id=excluded.validation_episode_id
-                """
+                );"""
             )
 
     def _upsertModelEntry(self, entry: TetrisModelDbEntry) -> None:
@@ -239,22 +229,6 @@ class TetrisModelService(ModelService[DeepQNetwork]):
                     recency_weighted_avg_loss=excluded.recency_weighted_avg_loss,
                     recency_weighted_avg_validation_q=excluded.recency_weighted_avg_validation_q;"""
             )
-
-    def _writeModelWeights(
-        self,
-        key: ModelDbKey,
-        policyModel: DeepQNetwork | None = None,
-        targetModel: DeepQNetwork | None = None,
-        optimizer: Optimizer | None = None,
-    ) -> None:
-        if not os.path.exists(key.weightsLocation):
-            os.makedirs(key.weightsLocation)
-        if policyModel is not None:
-            torch.save(policyModel.state_dict(), key.policyModelLocation)
-        if targetModel is not None:
-            torch.save(targetModel.state_dict(), key.targetModelLocation)
-        if optimizer is not None:
-            torch.save(optimizer.state_dict(), key.optimizerLocation)
 
     def _generateWeightsLocation(self, tag: str, version: int) -> str:
         return f"{self.modelWeightsPathStub}/{tag}/{version}"

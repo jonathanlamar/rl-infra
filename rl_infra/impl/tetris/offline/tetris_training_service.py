@@ -101,7 +101,7 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, Te
             valEpisodeAvgMaxQ=avgMaxQ,
         )
         self.modelService.publishOfflineMetrics(modelDbKey, offlineMetrics)
-        self.modelService.updateModel(
+        self.modelService.updateModelWeights(
             entry.modelDbKey,
             policyModel=self.policyModel,
             targetModel=self.targetModel,

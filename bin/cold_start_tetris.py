@@ -2,8 +2,10 @@
 import argparse
 import random
 
+import torch
+
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService
-from rl_infra.impl.tetris.offline.tetris_model_service import TetrisModelService
+from rl_infra.impl.tetris.offline.tetris_training_service import TetrisTrainingService
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment, TetrisEpisodeRecord
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction
 
@@ -36,8 +38,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dataService = TetrisDataService()
+    # The training loop samples before any on-policy data has been saved, so we seed with a random episode.
+    trainEpisode = generateRandomEpisode()
+    dataService.pushEpisode(trainEpisode)
+    # We hold out a separate random episode for validation using average max-Q as a qualitative performance metric.
     valEpisode = generateRandomEpisode()
     dataService.pushValidationEpisode(valEpisode)
 
-    modelService = TetrisModelService()
-    modelService.publishNewModel(args.model_tag)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    trainingService = TetrisTrainingService(device)
+    trainingService.coldStart(args.model_tag)

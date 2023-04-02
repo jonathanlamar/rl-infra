@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
 from time import time
 
@@ -12,6 +13,8 @@ from tetris.utils.utils import KeyPress
 from rl_infra.impl.tetris.offline.tetris_schema import TetrisOnlineMetrics
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
 from rl_infra.types.online.environment import Environment, EpisodeRecord, GameplayRecord
+
+logger = logging.getLogger(__name__)
 
 
 class TetrisEpisodeRecord(EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
@@ -49,6 +52,7 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         )
 
     def step(self, action: TetrisAction) -> TetrisTransition:
+        logger.debug("Stepping environment")
         oldState = self.currentState
         self.gameState.update(action.toKeyPress())
 
@@ -67,6 +71,7 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
             newState=self.currentState,
             reward=reward,
         )
+        logger.debug(f"transition = {transition}")
         self.currentEpisodeRecord = self.currentEpisodeRecord.append(transition)
         return transition
 
@@ -90,9 +95,11 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         return newState.score - oldState.score
 
     def startNewEpisode(self) -> None:
+        logger.info("Staring new episode.")
         self.gameState = GameState()
         self.currentState = self._getCurrentState()
         self.currentGameplayRecord = self.currentGameplayRecord.appendEpisode(self.currentEpisodeRecord)
         self.currentEpisodeRecord = TetrisEpisodeRecord(
             episodeNumber=self.currentEpisodeRecord.episodeNumber + 1, moves=[]
         )
+        logger.debug(f"Gameplay record = {self.currentGameplayRecord}")

@@ -107,14 +107,20 @@ class TetrisModelDbEntry(ModelDbEntry):
             raise KeyError("Cannot average incompatible model tags")
 
         # These should never be in danger of invalid values, but it doesn't hurt.
-        assert self.numEpisodesPlayed >= 0
-        assert self.numEpochsTrained >= 0
-        assert other.numEpisodesPlayed >= 0
-        assert other.numEpochsTrained >= 0
-        assert (self.numEpisodesPlayed == 0) == (self.avgEpisodeLength is None)
-        assert (self.numEpisodesPlayed == 0) == (self.avgEpisodeScore is None)
-        assert (self.numEpochsTrained == 0) == (self.recencyWeightedAvgLoss is None)
-        assert (self.numEpochsTrained == 0) == (self.recencyWeightedAvgValidationQ is None)
+        if (
+            self.numEpisodesPlayed < 0
+            or self.numEpochsTrained < 0
+            or (self.numEpisodesPlayed == 0) != (self.avgEpisodeLength is None)
+            or (self.numEpochsTrained == 0) != (self.recencyWeightedAvgLoss is None)
+        ):
+            raise RuntimeError("Invalid state for self.")
+        if (
+            other.numEpisodesPlayed < 0
+            or other.numEpochsTrained < 0
+            or (other.numEpisodesPlayed == 0) != (other.avgEpisodeScore is None)
+            or (other.numEpochsTrained == 0) != (other.recencyWeightedAvgValidationQ is None)
+        ):
+            raise RuntimeError("Invalid state for other.")
 
         # This function should never fail if the above assert pass
         def weightedAvg(avg1: float | None, count1: int, avg2: float | None, count2: int) -> float | None:

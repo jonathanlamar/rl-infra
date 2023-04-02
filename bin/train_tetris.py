@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import logging
 
 import torch
 
@@ -9,6 +10,8 @@ from rl_infra.impl.tetris.offline.tetris_training_service import TetrisTrainingS
 from rl_infra.impl.tetris.online.tetris_agent import TetrisAgent
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment
 from rl_infra.types.offline.model_service import ModelDbKey
+
+logger = logging.getLogger(__name__)
 
 
 def getParser() -> argparse.ArgumentParser:
@@ -46,8 +49,11 @@ def playEpisodeWithRetraining(
     args: argparse.Namespace,
 ) -> tuple[TetrisAgent, TetrisEnvironment]:
     gameIsOver = False
+    logging.info("Playing episode with retraining after each move.")
     while not gameIsOver:
+        logging.debug(f"State: {env.currentState}")
         action = agent.chooseAction(env.currentState)
+        logger.debug(f"Action: {action}")
         transition = env.step(action)
         gameIsOver = transition.state.isTerminal
         trainingService.retrainAndPublish(
@@ -58,6 +64,8 @@ def playEpisodeWithRetraining(
         )
         agent = deployAndLoadModel(agent.dbKey)
 
+    logging.info(f"Episode played: {env.currentEpisodeRecord}")
+
     return agent, env
 
 
@@ -65,47 +73,51 @@ if __name__ == "__main__":
     parser = getParser()
     args = parser.parse_args()
 
+    logging.info(f"args = {args}")
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    logging.info(f"device = {device}")
     dataService = TetrisDataService()
     modelService = TetrisModelService()
     trainingService = TetrisTrainingService(device=device)
 
     modelDbKey = modelService.getModelKey(args.model_tag, args.version)
-    print(f"Deploying version {modelDbKey.version} of model {modelDbKey.tag}")
+    logging.info(f"Deploying model {modelDbKey}.")
     agent = deployAndLoadModel(modelDbKey)
     env = TetrisEnvironment(episodeNumber=agent.numEpisodesPlayed)
     modelEntry = modelService.getModelEntry(modelDbKey)
+    logging.info(f"Model entry retrieved: {modelEntry}.")
 
     for _ in range(args.num_episodes):
         assert modelEntry is not None, "Model entry should exist"
-        print(
+        logging.info(
             f"Epsilon: {agent.epsilon:.4f}\n"
             f"Num epochs trained: {modelEntry.numEpochsTrained:.4f}\n"
             f"Average episodes lenghth: {modelEntry.avgEpisodeLength or 0:.4f}\n"
             f"Recency weighted average loss: {modelEntry.recencyWeightedAvgLoss or 0:.4f}\n"
             f"Recency weighted validation average max Q: {modelEntry.recencyWeightedAvgValidationQ or 0:.4f}\n"
         )
-        print(f"Playing episode {modelEntry.numEpisodesPlayed}")
+        logging.info(f"Playing episode {modelEntry.numEpisodesPlayed}")
         agent, env = playEpisodeWithRetraining(agent, env, args)
         lastEpisode = env.currentEpisodeRecord
         onlineMetrics = lastEpisode.computeOnlineMetrics()
         env.startNewEpisode()
         agent.startNewEpisode()
 
-        print(
+        logging.info(
             f"Episodes played: {agent.numEpisodesPlayed}\n"
             f"Epochs trained: {agent.numEpochsTrained}\n"
             f"Moves: {onlineMetrics.numMoves}\n"
             f"Score: {onlineMetrics.score}\n"
         )
 
-        print("Saving episode")
+        logging.info("Saving episode")
         dataService.pushEpisode(env.currentEpisodeRecord)
 
-        print("Updating online metrics for model")
+        logging.info("Updating online metrics for model")
         modelService.publishOnlineMetrics(modelDbKey, onlineMetrics)
         modelEntry = modelService.getModelEntry(modelDbKey)
 
-    print("Deleting old training examples")
+    logging.info("Deleting old training examples")
     dataService.keepNewRowsDeleteOld(sgn=0)
     dataService.keepNewRowsDeleteOld(sgn=-1)

@@ -1,3 +1,4 @@
+import logging
 import math
 import random
 
@@ -15,6 +16,8 @@ from rl_infra.impl.tetris.online.config import (
 )
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState
 from rl_infra.types.online.agent import Agent
+
+logger = logging.getLogger(__name__)
 
 
 class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
@@ -37,8 +40,10 @@ class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
     def startNewEpisode(self) -> None:
         self.numEpisodesPlayed += 1
         self.epsilon = self._updateEpsilon()
+        logger.info(f"Starting new episode.  epsilon = {self.epsilon}")
 
     def choosePolicyAction(self, state: TetrisState) -> TetrisAction:
+        logger.debug("Choosing policy action")
         input = state.toDqnInput()
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
@@ -48,6 +53,7 @@ class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
         return self.possibleActions[prediction]
 
     def chooseRandomAction(self) -> TetrisAction:
+        logger.debug("Choosing random action")
         return random.choice(self.possibleActions)
 
     def _updateEpsilon(self) -> float:

@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Sequence
 
 import torch
@@ -18,6 +19,8 @@ from rl_infra.types.online.transition import Transition
 
 FUTURE_REWARDS_DISCOUNT = 0.99
 TAU = 1  # Soft update interpolation factor.  Set to 1 for hard update (no interpolation)
+
+logger = logging.getLogger(__name__)
 
 
 class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, TetrisDataService]):
@@ -55,6 +58,7 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, Te
         return RMSprop(self.policyModel.parameters(), **self.optimizerInitialArgs)
 
     def coldStart(self, modelTag: str) -> int:
+        logger.info(f"Cold start - initializing model weights for {modelTag}")
         self.policyModel = self.modelFactory()
         self.targetModel = self.modelFactory()
         self.optimizer = self.optimizerFactory()

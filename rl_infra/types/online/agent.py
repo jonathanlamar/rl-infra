@@ -1,10 +1,13 @@
 import random
+import logging
 from typing import Protocol, TypeVar
 
 from torch.nn import Module
 
 from rl_infra.types.offline.model_service import ModelDbKey
 from rl_infra.types.online.transition import Action, State
+
+logger = logging.getLogger(__name__)
 
 S = TypeVar("S", bound=State, covariant=False, contravariant=True)
 A = TypeVar("A", bound=Action, covariant=True, contravariant=False)
@@ -20,6 +23,7 @@ class Agent(Protocol[S, A, M]):
 
     def chooseAction(self, state: S) -> A:
         """Choose action in epsilon-greedy manner, according to policy"""
+        logger.info("Choosing action")
         if random.random() < self.epsilon:
             return self.chooseRandomAction()
         else:

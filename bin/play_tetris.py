@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from time import sleep
 
-from IPython.terminal.embed import embed
 from pynput.keyboard import Key, KeyCode, Listener
 
 from rl_infra.impl.tetris.offline.tetris_data_service import TetrisDataService

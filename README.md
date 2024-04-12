@@ -26,10 +26,12 @@ third implementation.
 I have been using conda to manage dependencies.
 
 ```bash
-conda create -n rl-infra python=3.10
-conda activate rl_infra
+conda env create -f environment.yml
+conda activate rl-infra
 pip install -r requirements.txt
 pip install .
+git clone https://github.com/jonathanlamar/tetris.git tetris
+pip install tetris
 ```
 
 If you are going to play with the tetris implementation, you will need to clone

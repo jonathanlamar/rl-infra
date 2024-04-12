@@ -5,7 +5,7 @@ from typing_extensions import Self
 
 from rl_infra.types.base_types import SerializableDataClass
 from rl_infra.types.offline.schema import OnlineMetrics
-from rl_infra.types.online.transition import Action, State, Transition
+from rl_infra.types.online.transition import Action, State, StateActionSequence, Transition
 
 S_co = TypeVar("S_co", bound=State, covariant=True)
 A_co = TypeVar("A_co", bound=Action, covariant=True)
@@ -42,6 +42,6 @@ class Environment(Protocol[S, A, OM]):
 
     def step(self, action: A) -> Transition[S, A]: ...
 
-    def getReward(self, oldState: S, action: A, newState: S) -> float: ...
+    def getReward(self, stateActionSequence: StateActionSequence) -> float: ...
 
     def startNewEpisode(self) -> None: ...

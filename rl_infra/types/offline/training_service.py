@@ -6,7 +6,7 @@ from torch.optim import Optimizer
 from rl_infra.types.offline.data_service import DataService
 from rl_infra.types.offline.model_service import ModelDbKey, ModelService
 
-Model = TypeVar("Model", bound=torch.nn.Module, covariant=True)
+Model = TypeVar("Model", bound=torch.nn.Module, covariant=False, contravariant=False)
 MService = TypeVar("MService", bound=ModelService)
 DService = TypeVar("DService", bound=DataService)
 

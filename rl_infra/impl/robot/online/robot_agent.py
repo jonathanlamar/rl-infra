@@ -18,8 +18,7 @@ class RobotAgent(ABC, Agent[RobotState, RobotAction]):
         self.nextAction = RobotAction.MOVE_FORWARD
 
     @abstractmethod
-    def choosePolicyAction(self, state: RobotState) -> RobotAction:
-        ...
+    def choosePolicyAction(self, state: RobotState) -> RobotAction: ...
 
     def chooseRandomAction(self) -> RobotAction:
         return random.choice(

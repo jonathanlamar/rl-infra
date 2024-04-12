@@ -34,8 +34,7 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
     @validator("state", "newState", pre=True)
     @classmethod
     @abstractmethod
-    def _parseStateFromJson(cls: Type[Self], val: S | str) -> S:
-        ...
+    def _parseStateFromJson(cls: Type[Self], val: S | str) -> S: ...
 
     def toDbRow(self) -> DataDbRow:
         return DataDbRow(

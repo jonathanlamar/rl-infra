@@ -1,9 +1,0 @@
-flask
-numpy
-pillow
-pydantic
-requests
-scipy
-torch
-torchvision
-pynput

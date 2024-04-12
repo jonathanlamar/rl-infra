@@ -21,14 +21,14 @@ class TrainingService(Protocol[Model, MService, DService]):
 
     def modelFactory(self) -> Model: ...
 
-    def optimizerFactory(self) -> Model: ...
+    def optimizerFactory(self) -> Optimizer: ...
 
     def coldStart(self, modelTag: str) -> int: ...
 
     def retrainAndPublish(
         self,
         modelDbKey: ModelDbKey,
-        episodeNumber: int,
+        epochNumber: int,
         batchSize: int,
         numBatches: int,
         validationEpisodeId: int | None = None,

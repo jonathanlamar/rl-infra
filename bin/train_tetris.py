@@ -81,7 +81,11 @@ if __name__ == "__main__":
     modelService = TetrisModelService()
     trainingService = TetrisTrainingService(device=device)
 
-    modelDbKey = modelService.getModelKey(args.model_tag, args.version)
+    modelDbKey = (
+        modelService.getLatestVersionKey(args.model_tag)
+        if args.version is None
+        else modelService.getModelKey(args.model_tag, args.version)
+    )
     logging.info(f"Deploying model {modelDbKey}.")
     agent = deployAndLoadModel(modelDbKey)
     env = TetrisEnvironment(episodeNumber=agent.numEpisodesPlayed)

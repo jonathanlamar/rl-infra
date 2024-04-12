@@ -69,8 +69,7 @@ class RobotEnvironment(ABC, Environment[RobotState, RobotAction, RobotTransition
         )
 
     @abstractmethod
-    def getReward(self, oldState: RobotState, action: RobotAction, newState: RobotState) -> float:
-        ...
+    def getReward(self, oldState: RobotState, action: RobotAction, newState: RobotState) -> float: ...
 
     @staticmethod
     def _getState() -> RobotState:

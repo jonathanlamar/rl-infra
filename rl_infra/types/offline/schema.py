@@ -55,5 +55,4 @@ class ModelDbEntry(ABC, SerializableDataClass):
     # Other metrics vary by implementation
 
     @abstractmethod
-    def updateWithNewValues(self, other: Self) -> Self:
-        ...
+    def updateWithNewValues(self, other: Self) -> Self: ...

@@ -11,7 +11,12 @@ from tetris.game import GameState
 from tetris.utils.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_schema import TetrisOnlineMetrics
-from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
+from rl_infra.impl.tetris.online.tetris_transition import (
+    TetrisAction,
+    TetrisState,
+    TetrisStateActionSequence,
+    TetrisTransition,
+)
 from rl_infra.types.online.environment import Environment, EpisodeRecord, GameplayRecord
 
 logger = logging.getLogger(__name__)
@@ -63,7 +68,8 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
 
         self._updateBuffer()
         self.currentState = self._getCurrentState()
-        reward = self.getReward(oldState, action, self.currentState)
+        stateActionSequence = TetrisStateActionSequence(states=[oldState, self.currentState], actions=[action])
+        reward = self.getReward(stateActionSequence)
 
         transition = TetrisTransition(
             state=oldState,
@@ -89,10 +95,10 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         board[0, 1, -1] = int(self.gameState.dead)
         self.stateBuffer = np.concatenate([board, self.stateBuffer[:-1, :, :]])
 
-    def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:  # pyright: ignore
-        if newState.isTerminal:
+    def getReward(self, stateActionSequence: TetrisStateActionSequence) -> float:  # pyright: ignore
+        if stateActionSequence.states[1].isTerminal:
             return -1
-        return newState.score - oldState.score
+        return stateActionSequence.states[1].score - stateActionSequence.states[0].score
 
     def startNewEpisode(self) -> None:
         logger.info("Staring new episode.")

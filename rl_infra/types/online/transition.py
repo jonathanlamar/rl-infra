@@ -43,13 +43,3 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
             newState=self.newState.json(),
             reward=self.reward,
         )
-
-
-class StateActionSequence(ABC, SerializableDataClass, Generic[S, A]):
-    states: list[S]
-    actions: list[A]
-
-    @validator("states", pre=True)
-    @classmethod
-    @abstractmethod
-    def _parseStatesFromJson(cls: Type[Self], vals: list[S | str]) -> list[S]: ...

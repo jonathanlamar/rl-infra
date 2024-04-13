@@ -11,7 +11,7 @@ from tetris.utils import Tetramino
 from torch import Tensor
 
 from rl_infra.types.base_types import NumpyArray
-from rl_infra.types.online.transition import Action, State, StateActionSequence, Transition
+from rl_infra.types.online.transition import Action, State, Transition
 
 
 class TetrisPiece(str, Enum):
@@ -62,17 +62,6 @@ class TetrisTransition(Transition[TetrisState, TetrisAction]):
     @validator("state", "newState", pre=True)
     @classmethod
     def _parseStateFromJson(cls: Type[TetrisTransition], val: TetrisState | str) -> TetrisState:
-        return _maybeParseStateStr(val)
-
-
-class TetrisStateActionSequence(StateActionSequence[TetrisState, TetrisAction]):
-    @validator("states", pre=True)
-    @classmethod
-    def _parseStatesFromJson(cls: Type[TetrisStateActionSequence], vals: list[TetrisState | str]) -> list[TetrisState]:
-        return list(map(_maybeParseStateStr, vals))
-
-
-def _maybeParseStateStr(val: str | TetrisState) -> TetrisState:
-    if isinstance(val, str):
-        return TetrisState.parse_raw(val)
-    return val
+        if isinstance(val, str):
+            return TetrisState.parse_raw(val)
+        return val

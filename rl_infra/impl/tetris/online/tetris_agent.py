@@ -40,7 +40,7 @@ class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
     def startNewEpisode(self) -> None:
         self.numEpisodesPlayed += 1
         self.epsilon = self._updateEpsilon()
-        logger.info(f"Starting new episode.  epsilon = {self.epsilon}")
+        logger.debug(f"Starting new episode.  epsilon = {self.epsilon}")
 
     def choosePolicyAction(self, state: TetrisState) -> TetrisAction:
         logger.debug("Choosing policy action")

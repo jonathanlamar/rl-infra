@@ -52,7 +52,8 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
             self.pushEpisode(episode)
 
     def pushEpisode(self, episode: EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
-        logger.info(f"Pushing episode record: {episode}")
+        logger.info("Pushing episode record.")
+        logger.debug(f"Episode: {episode}")
         query = """
             INSERT INTO data (
                 state,
@@ -71,8 +72,9 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
             id = 0
         else:
             id = maxId + 1
-        logger.info(f"Pushing validation episode: {episode}")
+        logger.info("Pushing validation episode.")
         logger.info(f"Validation episode ID: {id}")
+        logger.debug(f"Episode: {episode}")
         query = """
             INSERT INTO validation_data (
                 episode_id,

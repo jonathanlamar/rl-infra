@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import argparse
 import logging
 import random
@@ -10,7 +11,21 @@ from rl_infra.impl.tetris.offline.tetris_training_service import TetrisTrainingS
 from rl_infra.impl.tetris.online.tetris_environment import TetrisEnvironment, TetrisEpisodeRecord
 from rl_infra.impl.tetris.online.tetris_transition import TetrisAction
 
-logger = logging.getLogger(__name__)
+
+def setupLogger() -> logging.Logger:
+    logger = logging.getLogger("rl_infra")
+    logger.setLevel(logging.INFO)
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logger.level)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+
+    return logger
 
 
 def getParser() -> argparse.ArgumentParser:
@@ -25,7 +40,7 @@ def getParser() -> argparse.ArgumentParser:
     return parser
 
 
-def generateRandomEpisode() -> TetrisEpisodeRecord:
+def generateRandomEpisode(logger: logging.Logger) -> TetrisEpisodeRecord:
     env = TetrisEnvironment()
     gameIsOver = False
     logger.debug("Generating random episode")
@@ -36,22 +51,26 @@ def generateRandomEpisode() -> TetrisEpisodeRecord:
         transition = env.step(action)
         gameIsOver = transition.state.isTerminal
 
-    logger.info(f"Generated episode {env.currentEpisodeRecord}")
+    logger.info(
+        f"Generated episode {env.currentEpisodeRecord.episodeNumber} with {len(env.currentEpisodeRecord.moves)} moves."
+    )
+    logger.debug(f"Episode moves: {env.currentEpisodeRecord.moves}")
     return env.currentEpisodeRecord  # pyright: ignore
 
 
 if __name__ == "__main__":
     parser = getParser()
     args = parser.parse_args()
+    logger = setupLogger()
 
     logger.info(f"args = {args}")
 
     dataService = TetrisDataService()
     # The training loop samples before any on-policy data has been saved, so we seed with a random episode.
-    trainEpisode = generateRandomEpisode()
+    trainEpisode = generateRandomEpisode(logger)
     dataService.pushEpisode(trainEpisode)
     # We hold out a separate random episode for validation using average max-Q as a qualitative performance metric.
-    valEpisode = generateRandomEpisode()
+    valEpisode = generateRandomEpisode(logger)
     dataService.pushValidationEpisode(valEpisode)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

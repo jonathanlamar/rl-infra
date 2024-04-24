@@ -23,7 +23,7 @@ class Agent(Protocol[S, A, M]):
 
     def chooseAction(self, state: S) -> A:
         """Choose action in epsilon-greedy manner, according to policy"""
-        logger.info("Choosing action")
+        logger.debug("Choosing action")
         if random.random() < self.epsilon:
             return self.chooseRandomAction()
         else:

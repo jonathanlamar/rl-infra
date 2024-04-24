@@ -95,7 +95,7 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         return newState.score - oldState.score
 
     def startNewEpisode(self) -> None:
-        logger.info("Staring new episode.")
+        logger.info("Starting new episode.")
         self.gameState = GameState()
         self.currentState = self._getCurrentState()
         self.currentGameplayRecord = self.currentGameplayRecord.appendEpisode(self.currentEpisodeRecord)

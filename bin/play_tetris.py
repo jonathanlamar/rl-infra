@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from time import sleep
 
 from pynput.keyboard import Key, KeyCode, Listener

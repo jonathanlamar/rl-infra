@@ -10,6 +10,7 @@ dependencies:
   - python=3.10.14
   - requests=2.31.0
   - scipy=1.13.0
+  - notebook
   - pip:
       - torch==2.2.2
       - torchvision==0.17.2

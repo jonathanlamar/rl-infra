@@ -21,18 +21,13 @@ implementations that I used. So far, the tetris implementation is the most compl
 a GoPiGo implementation that I hope to complete after tetris. I would also like to use an OpenAI Gym environment in a
 third implementation.
 
-## Using This Repo
+## Using This Repo to Train a Tetris Bot
 
-I have been using conda to manage dependencies.
+I have been using conda to manage dependencies, so you will need that installed on your PATH.  Assuming that is the
+case, simply run `./bin/install.sh` to create the environment and build the package into that environment. To clean up
+build artifacts, run `./bin/cleanup.sh`.
 
-```bash
-conda env create -f environment.yml
-conda activate rl-infra
-git clone https://github.com/jonathanlamar/tetris.git tetris
-pip install tetris/
-pip install .
-```
-
-If you are going to play with the tetris implementation, you will need to clone
-[the tetris repo](https://github.com/jonathanlamar/tetris) and run `pip install .` from the root of it in your conda
-environment.
+To initialize a model, use `./bin/cold_start_tetris.py`.  This script accepts a model tag parameter if you want to
+version multiple architectures simultaneously. To train a model, use `./bin/train_tetris.py`.  Use the help strings for
+both of these scripts to understand how to use them.  It goes without saying, but you need to activate the rl-infra
+conda environment prior to running either of them.

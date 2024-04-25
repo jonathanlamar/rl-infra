@@ -38,15 +38,27 @@ def getParser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version", type=int, help="Model version to train.  Will default to the latest version if blank."
     )
-    parser.add_argument("--num-episodes", type=int, default=10, help="Number of episodes to play (default 10).")
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes to play (default 1).")
+    parser.add_argument(
+        "--retrain-interval",
+        type=int,
+        default=1,
+        help="How often (in episodes) to retrain the model (default 1).  Set to zero to skip retraining during play.",
+    )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=32,
-        help="""Number of transitions per batch (default 128).  Transitions will be selected at random from recent
+        help="""Number of transitions per batch (default 32).  Transitions will be selected at random from recent
         gameplay and distributed such that examples with positive, zero, and negative reward are roughly equal.""",
     )
     parser.add_argument("--num-batches", type=int, default=1, help="Number of batches per training epoch. (default 1)")
+    parser.add_argument(
+        "--print",
+        action="store_true",
+        help="""Whether to show agent gameplay with periodic calls to GameState.draw.  Leave blank to train without
+        printing (much faster)""",
+    )
 
     return parser
 
@@ -56,11 +68,8 @@ def deployAndLoadModel(modelDbKey: ModelDbKey) -> TetrisAgent:
     return TetrisAgent(device=device)
 
 
-def playEpisodeWithRetraining(
-    agent: TetrisAgent, env: TetrisEnvironment, args: argparse.Namespace, logger: logging.Logger
-) -> tuple[TetrisAgent, TetrisEnvironment]:
+def playEpisode(agent: TetrisAgent, env: TetrisEnvironment, logger: logging.Logger) -> TetrisEnvironment:
     gameIsOver = False
-    logger.info("Playing episode with retraining after each move.")
     while not gameIsOver:
         logger.debug(f"State: {env.currentState}")
         action = agent.chooseAction(env.currentState)
@@ -68,18 +77,20 @@ def playEpisodeWithRetraining(
         transition = env.step(action)
         gameIsOver = transition.newState.isTerminal
         logger.debug(f"Terminal: {gameIsOver}")
-        trainingService.retrainAndPublish(
-            modelDbKey=agent.dbKey,
-            epochNumber=agent.numEpochsTrained,
-            batchSize=args.batch_size,
-            numBatches=args.num_batches,
-        )
-        agent = deployAndLoadModel(agent.dbKey)
 
-    logger.info("Episode played.")
-    logger.debug(f"Episode: {env.currentEpisodeRecord}")
+    return env
 
-    return agent, env
+
+def retrainModel(agent: TetrisAgent, args: argparse.Namespace, trainingService: TetrisTrainingService) -> TetrisAgent:
+    trainingService.retrainAndPublish(
+        modelDbKey=agent.dbKey,
+        epochNumber=agent.numEpochsTrained,
+        batchSize=args.batch_size,
+        numBatches=args.num_batches,
+    )
+    agent = deployAndLoadModel(agent.dbKey)
+
+    return agent
 
 
 if __name__ == "__main__":
@@ -115,12 +126,12 @@ if __name__ == "__main__":
         logger.info(
             f"Epsilon: {agent.epsilon:.4f}\n"
             f"Num epochs trained: {modelEntry.numEpochsTrained:.4f}\n"
-            f"Average episodes lenghth: {modelEntry.avgEpisodeLength or 0:.4f}\n"
+            f"Average episodes length: {modelEntry.avgEpisodeLength or 0:.4f}\n"
             f"Recency weighted average loss: {modelEntry.recencyWeightedAvgLoss or 0:.4f}\n"
             f"Recency weighted validation average max Q: {modelEntry.recencyWeightedAvgValidationQ or 0:.4f}\n"
         )
-        logger.info(f"Playing episode {modelEntry.numEpisodesPlayed}")
-        agent, env = playEpisodeWithRetraining(agent, env, args, logger)
+
+        env = playEpisode(agent, env, logger)
         lastEpisode = env.currentEpisodeRecord
         onlineMetrics = lastEpisode.computeOnlineMetrics()
         env.startNewEpisode()
@@ -139,6 +150,10 @@ if __name__ == "__main__":
         logger.info("Updating online metrics for model")
         modelService.publishOnlineMetrics(modelDbKey, onlineMetrics)
         modelEntry = modelService.getModelEntry(modelDbKey)
+
+        if args.retrain_interval != 0 and agent.numEpisodesPlayed % args.retrain_interval == 0:
+            logger.info("Retraining model")
+            agent = retrainModel(agent, args, logger, trainingService)
 
     logger.info("Deleting old training examples")
     dataService.keepNewRowsDeleteOld(sgn=0)

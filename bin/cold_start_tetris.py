@@ -16,13 +16,11 @@ def setupLogger() -> logging.Logger:
     logger = logging.getLogger("rl_infra")
     logger.setLevel(logging.INFO)
 
-    # create console handler and set level to debug
     ch = logging.StreamHandler()
     ch.setLevel(logger.level)
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     ch.setFormatter(formatter)
 
-    # add ch to logger
     logger.addHandler(ch)
 
     return logger

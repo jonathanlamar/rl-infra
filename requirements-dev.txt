@@ -1,0 +1,8 @@
+black==18.9b0
+build
+mypy
+pytest-mock==3.0.0
+pytest-watch==4.2
+pytest==6.2.5
+ruff
+types-mock

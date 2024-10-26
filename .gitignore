@@ -9,13 +9,8 @@ __pycache__/
 *~
 stubs/*
 !stubs/.gitkeep
-data/*
-!data/.gitkeep
-tetris/
-
-# due to using tox and pytest
-.tox
-.cache
+.data/*
+!.data/.gitkeep
 
 # Mac stuff
 .DS_Store

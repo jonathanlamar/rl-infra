@@ -28,4 +28,3 @@ class SqliteConnection(AbstractContextManager[sqlite3.Cursor]):
             self.connection.close()
         else:
             raise TypeError("connection is None type")
-        return super().__exit__(__exc_type, __exc_value, __traceback)

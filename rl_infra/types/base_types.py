@@ -7,7 +7,6 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
-from pydantic.fields import ModelField
 from typing_extensions import Self
 
 from rl_infra.utils import compressNpArray, uncompressNpArray
@@ -24,11 +23,11 @@ class SerializedNumpyArray:
 
 class NumpyArray(NDArray[Any], Generic[DType]):
     @classmethod
-    def __get_validators__(cls: Type[Self]):
+    def __get_pydantic_core_schema__(cls: Type[Self]):
         yield cls.validators
 
     @classmethod
-    def validators(cls: Type[Self], val: Any, field: ModelField) -> NDArray[Any]:
+    def validators(cls: Type[Self], val: Any, field: Any) -> NDArray[Any]:
         if field.sub_fields is None:
             raise TypeError("Sub fields not found")
         dtypeField = field.sub_fields[0]
@@ -50,15 +49,9 @@ class NumpyArray(NDArray[Any], Generic[DType]):
         return res
 
 
-class BasePydanticConfig:
-    """pydantic config class with shared settings for all instances (unless overridden)"""
-
-    allow_mutation = False
-    use_enum_values = True
-    json_encoders = {np.ndarray: compressNpArray}
-    orm_mode = True
-
-
 class SerializableDataClass(BaseModel):
-    class Config(BasePydanticConfig):
-        pass
+    class Config:
+        allow_mutation = False
+        use_enum_values = True
+        json_encoders = {np.ndarray: compressNpArray}
+        orm_mode = True

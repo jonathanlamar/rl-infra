@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from typing import Protocol, TypeVar
 
-from torch.nn import Module
-from torch.optim import Optimizer
-
 from rl_infra.types.offline.schema import (
     ModelDbEntry,
     ModelDbKey,
@@ -12,21 +9,17 @@ from rl_infra.types.offline.schema import (
     OnlineMetrics,
 )
 
-Model = TypeVar("Model", bound=Module, contravariant=True)
+Model = TypeVar("Model", contravariant=True)
 OnM = TypeVar("OnM", bound=OnlineMetrics, contravariant=True)
 OffM = TypeVar("OffM", bound=OfflineMetrics, contravariant=True)
 
 
 class ModelService(Protocol[Model, OnM, OffM]):
-    def publishNewModel(
-        self,
-        modelTag: str,
-        policyModel: Model | None,
-        targetModel: Model | None,
-        optimizer: Optimizer | None,
-    ) -> int:
-        """Publish new version of model with tag modelTag.  Optionally provide weights for policy mode, target model,
-        or optimizer.  Otherwise random weights are initialized.  Returns version of newly published model.
+    def publishNewModel(self, modelTag: str, policyModel: Model | None) -> int:
+        """
+        Publish new version of model with tag modelTag.  Optionally provide weights for
+        policy model. Otherwise random weights are initialized.  Returns version of
+        newly published model.
         """
         ...
 
@@ -39,11 +32,7 @@ class ModelService(Protocol[Model, OnM, OffM]):
     def deployModel(self, key: ModelDbKey) -> None: ...
 
     def updateModelWeights(
-        self,
-        key: ModelDbKey,
-        policyModel: Model | None,
-        targetModel: Model | None,
-        optimizer: Optimizer | None,
+        self, key: ModelDbKey, policyModel: Model | None
     ) -> None: ...
 
     def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: OnM) -> None: ...

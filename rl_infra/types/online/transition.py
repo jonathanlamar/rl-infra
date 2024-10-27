@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generic, NamedTuple, Type, TypeVar
 
-from pydantic import validator
+from pydantic import field_validator
 from typing_extensions import Self
 
 from rl_infra.types.base_types import SerializableDataClass
@@ -31,9 +31,10 @@ class Transition(ABC, SerializableDataClass, Generic[S, A]):
     newState: S
     reward: float
 
-    @validator("state", "newState", pre=True)
+    @field_validator("state", "newState", mode="before")
     @classmethod
     @abstractmethod
+    @classmethod
     def _parseStateFromJson(cls: Type[Self], val: S | str) -> S: ...
 
     def toDbRow(self) -> DataDbRow:

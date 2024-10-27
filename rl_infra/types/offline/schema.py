@@ -25,14 +25,6 @@ class ModelDbKey(SerializableDataClass):
     def policyModelLocation(self) -> str:
         return f"{self.weightsLocation}/policyModel.pt"
 
-    @property
-    def targetModelLocation(self) -> str:
-        return f"{self.weightsLocation}/targetModel.pt"
-
-    @property
-    def optimizerLocation(self) -> str:
-        return f"{self.weightsLocation}/optimizer.pt"
-
 
 OnM_co = TypeVar("OnM_co", bound=OnlineMetrics, covariant=True)
 OffM_co = TypeVar("OffM_co", bound=OfflineMetrics, covariant=True)

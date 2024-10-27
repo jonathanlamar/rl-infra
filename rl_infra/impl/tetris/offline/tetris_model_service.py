@@ -16,13 +16,19 @@ from rl_infra.impl.tetris.offline.tetris_schema import (
     TetrisOnlineMetrics,
     TetrisOnlineMetricsDbEntry,
 )
-from rl_infra.impl.tetris.online.config import MODEL_ENTRY_PATH, MODEL_ROOT_PATH, MODEL_WEIGHTS_PATH
+from rl_infra.impl.tetris.online.config import (
+    MODEL_ENTRY_PATH,
+    MODEL_ROOT_PATH,
+    MODEL_WEIGHTS_PATH,
+)
 from rl_infra.types.offline import ModelDbKey, ModelService, SqliteConnection
 
 logger = logging.getLogger(__name__)
 
 
-class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisOfflineMetrics]):
+class TetrisModelService(
+    ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisOfflineMetrics]
+):
     def __init__(self) -> None:
         self.dbPath = f"{DB_ROOT_PATH}/model.db"
         self.modelWeightsPathStub = f"{DB_ROOT_PATH}/models"
@@ -83,16 +89,27 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
         else:
             version = 0
         weightsLocation = self._generateWeightsLocation(modelTag, version)
-        newModelKey = ModelDbKey(tag=modelTag, version=version, weightsLocation=weightsLocation)
+        newModelKey = ModelDbKey(
+            tag=modelTag, version=version, weightsLocation=weightsLocation
+        )
         logger.info(f"Publishing model {newModelKey}")
-        modelEntry = TetrisModelDbEntry(modelDbKey=newModelKey, numEpisodesPlayed=0, numEpochsTrained=0)
+        modelEntry = TetrisModelDbEntry(
+            modelDbKey=newModelKey, numEpisodesPlayed=0, numEpochsTrained=0
+        )
         self._upsertModelEntry(modelEntry)
-        self.updateModelWeights(newModelKey, policyModel=policyModel, targetModel=targetModel, optimizer=optimizer)
+        self.updateModelWeights(
+            newModelKey,
+            policyModel=policyModel,
+            targetModel=targetModel,
+            optimizer=optimizer,
+        )
         return version
 
     def getModelKey(self, modelTag: str, version: int) -> ModelDbKey:
         weightsLocation = self._generateWeightsLocation(modelTag, version)
-        return ModelDbKey(tag=modelTag, version=version, weightsLocation=weightsLocation)
+        return ModelDbKey(
+            tag=modelTag, version=version, weightsLocation=weightsLocation
+        )
 
     def getLatestVersionKey(self, modelTag: str) -> ModelDbKey | None:
         with SqliteConnection(self.dbPath) as cur:
@@ -118,7 +135,9 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
             raise KeyError(f"Model {key} not found")
         if not os.path.exists(self.deployModelRootPath):
             os.makedirs(self.deployModelRootPath)
-        logger.info(f"Deploying model {key} (executing cp {key.policyModelLocation} {self.deployModelWeightsPath})")
+        logger.info(
+            f"Deploying model {key} (executing cp {key.policyModelLocation} {self.deployModelWeightsPath})"
+        )
         os.system(f"cp {key.policyModelLocation} {self.deployModelWeightsPath}")
         logger.info(f"Copying model entry {entry} to {self.deployModelEntryPath}")
         with open(self.deployModelEntryPath, "w") as f:
@@ -140,29 +159,41 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
         if optimizer is not None:
             torch.save(optimizer.state_dict(), key.optimizerLocation)
 
-    def publishOnlineMetrics(self, key: ModelDbKey, onlineMetrics: TetrisOnlineMetrics) -> None:
+    def publishOnlineMetrics(
+        self, key: ModelDbKey, onlineMetrics: TetrisOnlineMetrics
+    ) -> None:
         modelEntry = TetrisModelDbEntry.fromMetrics(key, onlineMetrics=onlineMetrics)
-        logger.info(f"Publishing online metrics.  Created model entry {modelEntry} to upsert.")
+        logger.info(
+            f"Publishing online metrics.  Created model entry {modelEntry} to upsert."
+        )
         maybeExistingEntry = self.getModelEntry(key)
         if maybeExistingEntry is not None:
             logger.debug(f"Found existing model entry {maybeExistingEntry}")
             modelEntry = maybeExistingEntry.updateWithNewValues(modelEntry)
             logger.debug(f"After updaing, model entry to upsert is {modelEntry}")
         self._upsertModelEntry(modelEntry)
-        onlineMetricsEntry = TetrisOnlineMetricsDbEntry(modelDbKey=key, onlineMetrics=onlineMetrics)
+        onlineMetricsEntry = TetrisOnlineMetricsDbEntry(
+            modelDbKey=key, onlineMetrics=onlineMetrics
+        )
         logger.info(f"Online metrics enrty to insert: {onlineMetricsEntry}")
         self._insertOnlineMetricsEntry(onlineMetricsEntry)
 
-    def publishOfflineMetrics(self, key: ModelDbKey, offlineMetrics: TetrisOfflineMetrics) -> None:
+    def publishOfflineMetrics(
+        self, key: ModelDbKey, offlineMetrics: TetrisOfflineMetrics
+    ) -> None:
         modelEntry = TetrisModelDbEntry.fromMetrics(key, offlineMetrics=offlineMetrics)
-        logger.info(f"Publishing offline metrics.  Created model entry {modelEntry} to upsert.")
+        logger.info(
+            f"Publishing offline metrics.  Created model entry {modelEntry} to upsert."
+        )
         maybeExistingEntry = self.getModelEntry(key)
         if maybeExistingEntry is not None:
             logger.debug(f"Found existing model entry {maybeExistingEntry}")
             modelEntry = maybeExistingEntry.updateWithNewValues(modelEntry)
             logger.debug(f"After updaing, model entry to upsert is {modelEntry}")
         self._upsertModelEntry(modelEntry)
-        offlineMetricsEntry = TetrisOfflineMetricsDbEntry(modelDbKey=key, offlineMetrics=offlineMetrics)
+        offlineMetricsEntry = TetrisOfflineMetricsDbEntry(
+            modelDbKey=key, offlineMetrics=offlineMetrics
+        )
         logger.info(f"Offline metrics enrty to insert: {offlineMetricsEntry}")
         self._insertOfflineMetricsEntry(offlineMetricsEntry)
 
@@ -207,10 +238,22 @@ class TetrisModelService(ModelService[DeepQNetwork, TetrisOnlineMetrics, TetrisO
             )
 
     def _upsertModelEntry(self, entry: TetrisModelDbEntry) -> None:
-        episodeLength = entry.avgEpisodeLength if entry.avgEpisodeLength is not None else "NULL"
-        episodeScore = entry.avgEpisodeScore if entry.avgEpisodeScore is not None else "NULL"
-        trainingLoss = entry.recencyWeightedAvgLoss if entry.recencyWeightedAvgLoss is not None else "NULL"
-        avgQ = entry.recencyWeightedAvgValidationQ if entry.recencyWeightedAvgValidationQ is not None else "NULL"
+        episodeLength = (
+            entry.avgEpisodeLength if entry.avgEpisodeLength is not None else "NULL"
+        )
+        episodeScore = (
+            entry.avgEpisodeScore if entry.avgEpisodeScore is not None else "NULL"
+        )
+        trainingLoss = (
+            entry.recencyWeightedAvgLoss
+            if entry.recencyWeightedAvgLoss is not None
+            else "NULL"
+        )
+        avgQ = (
+            entry.recencyWeightedAvgValidationQ
+            if entry.recencyWeightedAvgValidationQ is not None
+            else "NULL"
+        )
         with SqliteConnection(self.dbPath) as cur:
             cur.execute(
                 f"""INSERT INTO models (

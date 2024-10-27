@@ -118,12 +118,15 @@ class TetrisModelDbEntry(ModelDbEntry):
             other.numEpisodesPlayed < 0
             or other.numEpochsTrained < 0
             or (other.numEpisodesPlayed == 0) != (other.avgEpisodeScore is None)
-            or (other.numEpochsTrained == 0) != (other.recencyWeightedAvgValidationQ is None)
+            or (other.numEpochsTrained == 0)
+            != (other.recencyWeightedAvgValidationQ is None)
         ):
             raise RuntimeError("Invalid state for other.")
 
         # This function should never fail if the above assert pass
-        def weightedAvg(avg1: float | None, count1: int, avg2: float | None, count2: int) -> float | None:
+        def weightedAvg(
+            avg1: float | None, count1: int, avg2: float | None, count2: int
+        ) -> float | None:
             if avg1 is None:
                 return avg2
             if avg2 is None:
@@ -135,13 +138,22 @@ class TetrisModelDbEntry(ModelDbEntry):
             numEpisodesPlayed=self.numEpisodesPlayed + other.numEpisodesPlayed,
             numEpochsTrained=self.numEpochsTrained + other.numEpochsTrained,
             avgEpisodeLength=weightedAvg(
-                self.avgEpisodeLength, self.numEpisodesPlayed, other.avgEpisodeLength, other.numEpisodesPlayed
+                self.avgEpisodeLength,
+                self.numEpisodesPlayed,
+                other.avgEpisodeLength,
+                other.numEpisodesPlayed,
             ),
             avgEpisodeScore=weightedAvg(
-                self.avgEpisodeScore, self.numEpisodesPlayed, other.avgEpisodeScore, other.numEpisodesPlayed
+                self.avgEpisodeScore,
+                self.numEpisodesPlayed,
+                other.avgEpisodeScore,
+                other.numEpisodesPlayed,
             ),
             recencyWeightedAvgLoss=weightedAvg(
-                self.recencyWeightedAvgLoss, self.numEpochsTrained, other.recencyWeightedAvgLoss, other.numEpochsTrained
+                self.recencyWeightedAvgLoss,
+                self.numEpochsTrained,
+                other.recencyWeightedAvgLoss,
+                other.numEpochsTrained,
             ),
             recencyWeightedAvgValidationQ=weightedAvg(
                 self.recencyWeightedAvgValidationQ,
@@ -163,8 +175,12 @@ class TetrisModelDbEntry(ModelDbEntry):
             numEpochsTrained=int(offlineMetrics is not None),
             avgEpisodeLength=None if onlineMetrics is None else onlineMetrics.numMoves,
             avgEpisodeScore=None if onlineMetrics is None else onlineMetrics.score,
-            recencyWeightedAvgLoss=None if offlineMetrics is None else offlineMetrics.avgBatchLoss,
-            recencyWeightedAvgValidationQ=None if offlineMetrics is None else offlineMetrics.valEpisodeAvgMaxQ,
+            recencyWeightedAvgLoss=(
+                None if offlineMetrics is None else offlineMetrics.avgBatchLoss
+            ),
+            recencyWeightedAvgValidationQ=(
+                None if offlineMetrics is None else offlineMetrics.valEpisodeAvgMaxQ
+            ),
         )
 
     class Config(ModelDbEntry.Config):

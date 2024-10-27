@@ -44,7 +44,9 @@ class TetrisState(State):
     nextPiece: TetrisPiece
 
     def toDqnInput(self) -> Tensor:
-        return torch.from_numpy(self.board.copy().reshape(1, 2, BOARD_SIZE[0], BOARD_SIZE[1] + 1))
+        return torch.from_numpy(
+            self.board.copy().reshape(1, 2, BOARD_SIZE[0], BOARD_SIZE[1] + 1)
+        )
 
 
 class TetrisAction(Action, Enum):
@@ -61,7 +63,9 @@ class TetrisAction(Action, Enum):
 class TetrisTransition(Transition[TetrisState, TetrisAction]):
     @validator("state", "newState", pre=True)
     @classmethod
-    def _parseStateFromJson(cls: Type[TetrisTransition], val: TetrisState | str) -> TetrisState:
+    def _parseStateFromJson(
+        cls: Type[TetrisTransition], val: TetrisState | str
+    ) -> TetrisState:
         if isinstance(val, str):
             return TetrisState.parse_raw(val)
         return val

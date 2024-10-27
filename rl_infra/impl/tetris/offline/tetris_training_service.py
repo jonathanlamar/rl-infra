@@ -18,12 +18,16 @@ from rl_infra.types.offline.training_service import TrainingService
 from rl_infra.types.online.transition import Transition
 
 FUTURE_REWARDS_DISCOUNT = 0.99
-TAU = 1  # Soft update interpolation factor.  Set to 1 for hard update (no interpolation)
+TAU = (
+    1  # Soft update interpolation factor.  Set to 1 for hard update (no interpolation)
+)
 
 logger = logging.getLogger(__name__)
 
 
-class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, TetrisDataService]):
+class TetrisTrainingService(
+    TrainingService[DeepQNetwork, TetrisModelService, TetrisDataService]
+):
     modelInitArgs: dict[str, Any]
     optimizerInitialArgs: dict[str, Any]
 
@@ -112,11 +116,15 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, Te
             optimizer=self.optimizer,
         )
 
-    def validateOnEpisode(self, validationEpisodeId: int | None = None) -> tuple[float, int]:
+    def validateOnEpisode(
+        self, validationEpisodeId: int | None = None
+    ) -> tuple[float, int]:
         if self.policyModel is None:
             raise RuntimeError("Policy model not initialized")
         valEpisode = self.dataService.getValidationEpisode(validationEpisodeId)
-        episodeStateTensor = torch.concat([m.state.toDqnInput() for m in valEpisode.moves])
+        episodeStateTensor = torch.concat(
+            [m.state.toDqnInput() for m in valEpisode.moves]
+        )
         stateActionValues = self.policyModel(episodeStateTensor)
         stateMaxQ = stateActionValues.max(1)[0]
         avgMaxQ = stateMaxQ.mean().item()
@@ -142,22 +150,34 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, Te
 
         return loss.item()
 
-    def _getBatchLoss(self, batch: Sequence[Transition[TetrisState, TetrisAction]]) -> Tensor:
+    def _getBatchLoss(
+        self, batch: Sequence[Transition[TetrisState, TetrisAction]]
+    ) -> Tensor:
         if self.policyModel is None or self.targetModel is None:
             raise RuntimeError("Policy model or target model not initialized")
         nonFinalMask = torch.tensor(
-            tuple(map(lambda s: not s.state.isTerminal, batch)), device=self.device, dtype=torch.bool
+            tuple(map(lambda s: not s.state.isTerminal, batch)),
+            device=self.device,
+            dtype=torch.bool,
         )
-        nonFinalNextStates = torch.cat([elt.newState.toDqnInput() for elt in batch if not elt.state.isTerminal])
+        nonFinalNextStates = torch.cat(
+            [elt.newState.toDqnInput() for elt in batch if not elt.state.isTerminal]
+        )
 
         stateBatch = torch.cat([elt.state.toDqnInput() for elt in batch])
-        actionBatch = torch.tensor([TetrisAgent.possibleActions.index(elt.action) for elt in batch])
+        actionBatch = torch.tensor(
+            [TetrisAgent.possibleActions.index(elt.action) for elt in batch]
+        )
         rewardBatch = torch.tensor([elt.reward for elt in batch])
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        stateActionValues = self.policyModel(stateBatch).gather(1, actionBatch.reshape(-1, 1)).reshape(-1)
+        stateActionValues = (
+            self.policyModel(stateBatch)
+            .gather(1, actionBatch.reshape(-1, 1))
+            .reshape(-1)
+        )
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -166,10 +186,14 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, Te
         # state value or 0 in case the state was final.
         nextStateValues = torch.zeros(len(batch), device=self.device)
         with torch.no_grad():
-            nextStateValues[nonFinalMask] = self.targetModel(nonFinalNextStates).max(1)[0]
+            nextStateValues[nonFinalMask] = self.targetModel(nonFinalNextStates).max(1)[
+                0
+            ]
 
         # Compute expected Q values
-        expectedStateActionValues = (nextStateValues * FUTURE_REWARDS_DISCOUNT) + rewardBatch
+        expectedStateActionValues = (
+            nextStateValues * FUTURE_REWARDS_DISCOUNT
+        ) + rewardBatch
 
         # Compute Training loss
         criterion = MSELoss()
@@ -184,5 +208,7 @@ class TetrisTrainingService(TrainingService[DeepQNetwork, TetrisModelService, Te
         targetModelStateDict = self.targetModel.state_dict()
         policyModelStateDict = self.policyModel.state_dict()
         for key in policyModelStateDict:
-            targetModelStateDict[key] = policyModelStateDict[key] * TAU + targetModelStateDict[key] * (1 - TAU)
+            targetModelStateDict[key] = policyModelStateDict[
+                key
+            ] * TAU + targetModelStateDict[key] * (1 - TAU)
         self.targetModel.load_state_dict(targetModelStateDict)

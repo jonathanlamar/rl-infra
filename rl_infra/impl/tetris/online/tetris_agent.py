@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 class TetrisAgent(Agent[TetrisState, TetrisAction, DeepQNetwork]):
-    possibleActions = list(sorted(TetrisAction))  # Make sure the models always see the same order
+    possibleActions = list(
+        sorted(TetrisAction)
+    )  # Make sure the models always see the same order
 
     def __init__(self, device: torch.device) -> None:
         self.policy = DeepQNetwork(

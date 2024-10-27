@@ -20,7 +20,9 @@ class EpisodeRecord(ABC, SerializableDataClass, Generic[S_co, A_co, OM_co]):
     def computeOnlineMetrics(self) -> OM_co: ...
 
     def append(self, transition: Transition[S_co, A_co]) -> Self:
-        return self.__class__(episodeNumber=self.episodeNumber, moves=self.moves + [transition])
+        return self.__class__(
+            episodeNumber=self.episodeNumber, moves=self.moves + [transition]
+        )
 
 
 class GameplayRecord(SerializableDataClass, Generic[S_co, A_co, OM_co]):

@@ -11,13 +11,19 @@ from tetris.game import GameState
 from tetris.utils.utils import KeyPress
 
 from rl_infra.impl.tetris.offline.tetris_schema import TetrisOnlineMetrics
-from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
+from rl_infra.impl.tetris.online.tetris_transition import (
+    TetrisAction,
+    TetrisState,
+    TetrisTransition,
+)
 from rl_infra.types.online.environment import Environment, EpisodeRecord, GameplayRecord
 
 logger = logging.getLogger(__name__)
 
 
-class TetrisEpisodeRecord(EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]):
+class TetrisEpisodeRecord(
+    EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]
+):
     def computeOnlineMetrics(self) -> TetrisOnlineMetrics:
         return TetrisOnlineMetrics(
             episodeNumber=self.episodeNumber,
@@ -37,10 +43,14 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
     def __init__(self, episodeNumber: int = 0, humanPlayer: bool = False) -> None:
         self.humanPlayer = humanPlayer
         self.gameState = GameState()
-        self.stateBuffer = np.zeros((2, BOARD_SIZE[0], BOARD_SIZE[1] + 1), dtype=np.uint8)
+        self.stateBuffer = np.zeros(
+            (2, BOARD_SIZE[0], BOARD_SIZE[1] + 1), dtype=np.uint8
+        )
         self.currentState = self._getCurrentState()
         self.currentGameplayRecord = TetrisGameplayRecord(episodes=[])
-        self.currentEpisodeRecord = TetrisEpisodeRecord(episodeNumber=episodeNumber, moves=[])
+        self.currentEpisodeRecord = TetrisEpisodeRecord(
+            episodeNumber=episodeNumber, moves=[]
+        )
 
     def _getCurrentState(self) -> TetrisState:
         return TetrisState(
@@ -57,7 +67,8 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         self.gameState.update(action.toKeyPress())
 
         if not self.gameState.dead and (
-            (self.humanPlayer and time() - self.gameState.lastAdvanceTime > 0.25) or (not self.humanPlayer)
+            (self.humanPlayer and time() - self.gameState.lastAdvanceTime > 0.25)
+            or (not self.humanPlayer)
         ):
             self.gameState.update(KeyPress.DOWN)
 
@@ -85,11 +96,15 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         )
         for idx in self.gameState.activePiece.squares:
             board[0, idx[0], idx[1]] = 2
-        board[0, 0, -1] = ["I", "L", "O", "T", "Z"].index(self.gameState.nextPiece.letter)
+        board[0, 0, -1] = ["I", "L", "O", "T", "Z"].index(
+            self.gameState.nextPiece.letter
+        )
         board[0, 1, -1] = int(self.gameState.dead)
         self.stateBuffer = np.concatenate([board, self.stateBuffer[:-1, :, :]])
 
-    def getReward(self, oldState: TetrisState, action: TetrisAction, newState: TetrisState) -> float:  # pyright: ignore
+    def getReward(
+        self, oldState: TetrisState, action: TetrisAction, newState: TetrisState
+    ) -> float:  # pyright: ignore
         if newState.isTerminal:
             return -1
         return newState.score - oldState.score
@@ -98,7 +113,9 @@ class TetrisEnvironment(Environment[TetrisState, TetrisAction, TetrisOnlineMetri
         logger.info("Starting new episode.")
         self.gameState = GameState()
         self.currentState = self._getCurrentState()
-        self.currentGameplayRecord = self.currentGameplayRecord.appendEpisode(self.currentEpisodeRecord)
+        self.currentGameplayRecord = self.currentGameplayRecord.appendEpisode(
+            self.currentEpisodeRecord
+        )
         self.currentEpisodeRecord = TetrisEpisodeRecord(
             episodeNumber=self.currentEpisodeRecord.episodeNumber + 1, moves=[]
         )

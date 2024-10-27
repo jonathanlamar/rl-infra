@@ -5,7 +5,12 @@ from typing import Protocol, TypeVar
 from torch.nn import Module
 from torch.optim import Optimizer
 
-from rl_infra.types.offline.schema import ModelDbEntry, ModelDbKey, OfflineMetrics, OnlineMetrics
+from rl_infra.types.offline.schema import (
+    ModelDbEntry,
+    ModelDbKey,
+    OfflineMetrics,
+    OnlineMetrics,
+)
 
 Model = TypeVar("Model", bound=Module, contravariant=True)
 OnM = TypeVar("OnM", bound=OnlineMetrics, contravariant=True)
@@ -21,7 +26,8 @@ class ModelService(Protocol[Model, OnM, OffM]):
         optimizer: Optimizer | None,
     ) -> int:
         """Publish new version of model with tag modelTag.  Optionally provide weights for policy mode, target model,
-        or optimizer.  Otherwise random weights are initialized.  Returns version of newly published model."""
+        or optimizer.  Otherwise random weights are initialized.  Returns version of newly published model.
+        """
         ...
 
     def getModelKey(self, modelTag: str, version: int) -> ModelDbKey: ...

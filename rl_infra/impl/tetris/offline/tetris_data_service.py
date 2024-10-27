@@ -11,7 +11,11 @@ from rl_infra.impl.tetris.online.tetris_environment import (
     TetrisGameplayRecord,
     TetrisOnlineMetrics,
 )
-from rl_infra.impl.tetris.online.tetris_transition import TetrisAction, TetrisState, TetrisTransition
+from rl_infra.impl.tetris.online.tetris_transition import (
+    TetrisAction,
+    TetrisState,
+    TetrisTransition,
+)
 from rl_infra.types.offline import DataService, SqliteConnection
 from rl_infra.types.online.environment import EpisodeRecord
 from rl_infra.types.online.transition import DataDbRow, Transition
@@ -51,7 +55,9 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
         for episode in gameplay.episodes:
             self.pushEpisode(episode)
 
-    def pushEpisode(self, episode: EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
+    def pushEpisode(
+        self, episode: EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]
+    ) -> None:
         logger.info("Pushing episode record.")
         logger.debug(f"Episode: {episode}")
         query = """
@@ -65,9 +71,13 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
         with SqliteConnection(self.dbPath) as cur:
             cur.executemany(query, values)
 
-    def pushValidationEpisode(self, episode: EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]) -> None:
+    def pushValidationEpisode(
+        self, episode: EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]
+    ) -> None:
         with SqliteConnection(self.dbPath) as cur:
-            maxId = cur.execute("SELECT MAX(episode_id) FROM validation_data;").fetchone()[0]
+            maxId = cur.execute(
+                "SELECT MAX(episode_id) FROM validation_data;"
+            ).fetchone()[0]
         if maxId is None:
             id = 0
         else:
@@ -92,7 +102,9 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
     ) -> EpisodeRecord[TetrisState, TetrisAction, TetrisOnlineMetrics]:
         if episodeId is None:
             with SqliteConnection(self.dbPath) as cur:
-                maxId = cur.execute("SELECT MAX(episode_id) FROM validation_data;").fetchone()[0]
+                maxId = cur.execute(
+                    "SELECT MAX(episode_id) FROM validation_data;"
+                ).fetchone()[0]
             if maxId is None:
                 raise KeyError("No validation episodes")
             else:
@@ -102,19 +114,27 @@ class TetrisDataService(DataService[TetrisState, TetrisAction, TetrisOnlineMetri
             rows = cur.execute(
                 f"SELECT state, action, new_state, reward FROM validation_data WHERE episode_id = {episodeId}"
             ).fetchall()
-        return TetrisEpisodeRecord(episodeNumber=0, moves=[TetrisTransition.from_orm(DataDbRow(*row)) for row in rows])
+        return TetrisEpisodeRecord(
+            episodeNumber=0,
+            moves=[TetrisTransition.from_orm(DataDbRow(*row)) for row in rows],
+        )
 
     def sample(self, batchSize: int) -> Sequence[Transition[TetrisState, TetrisAction]]:
         logger.info(f"Sampling batch of {batchSize} transitions")
         with SqliteConnection(self.dbPath) as cur:
-            rows = cur.execute(f"select * from data order by random() limit {batchSize}").fetchall()
+            rows = cur.execute(
+                f"select * from data order by random() limit {batchSize}"
+            ).fetchall()
         if len(rows) < batchSize:
             logger.info(f"Not enough rows found (found {len(rows)}).  Oversampling.")
             rows *= ceil(batchSize / len(rows))
             random.shuffle(rows)
             rows = rows[:batchSize]
             logger.debug(f"Oversampled rows: {rows}")
-        return [TetrisTransition.from_orm(DataDbRow(*row)) for row in random.sample(rows, batchSize)]
+        return [
+            TetrisTransition.from_orm(DataDbRow(*row))
+            for row in random.sample(rows, batchSize)
+        ]
 
     def keepNewRowsDeleteOld(self, sgn: int = 0) -> None:
         logger.info(f"Removing all but {self.capacity} rows with reward sign {sgn}")

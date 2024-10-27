@@ -44,7 +44,9 @@ class NumpyArray(NDArray[Any], Generic[DType]):
         if res is None:
             raise TypeError("val is not a numpy array or a serialized numpy array")
         if expectedDtype != res.dtype:
-            raise TypeError(f"dtype of val is incorrect.  Expected {expectedDtype}, received {res.dtype}")
+            raise TypeError(
+                f"dtype of val is incorrect.  Expected {expectedDtype}, received {res.dtype}"
+            )
         return res
 
 

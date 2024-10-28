@@ -1,17 +1,22 @@
 import base64
-from dataclasses import asdict
+import json
 from typing import Any, Generic, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, BeforeValidator, ConfigDict, PlainSerializer
-from pydantic.dataclasses import dataclass
 from typing_extensions import Annotated
 
 
-def compressNpArray(nparr: NDArray[Any]) -> dict[str, str | tuple[int, ...]]:
+class SerializedNumpyArray(BaseModel):
+    data: str
+    shape: tuple[int, ...]
+    dtype: str
+
+
+def compressNpArray(nparr: NDArray[Any]) -> SerializedNumpyArray:
     """Returns the given numpy array as a base64 encoded string."""
-    return dict(
+    return SerializedNumpyArray(
         data=base64.b64encode(bytes(nparr)).decode("ascii"),
         shape=nparr.shape,
         dtype=str(nparr.dtype),
@@ -26,33 +31,31 @@ def uncompressNpArray(data: str, shape: tuple[int, ...], dtype: str) -> NDArray[
     return arr.reshape(shape)
 
 
-@dataclass
-class SerializedNumpyArray:
-    data: str
-    shape: tuple[int, ...]
-    dtype: str
-
-
 DType = TypeVar("DType")
 
 
-def validateSerializedNpArray(val: Any) -> NDArray[Any]:
-    res: NDArray[Any] | None = None
-    arr: SerializedNumpyArray | None = None
-
+def validateSerializedNpArray(
+    val: str | dict | SerializedNumpyArray | NDArray[Any],
+) -> NDArray[Any]:
+    print(f"Found {val}, which has type {type(val)}")
     if isinstance(val, np.ndarray):
-        res = val
+        print("Found array")
+        return val
+    if isinstance(val, str):
+        print("Found string")
+        val = json.loads(val)
     if isinstance(val, dict):
-        # validate the contents of val
-        arr = SerializedNumpyArray(**val)
-        res = uncompressNpArray(**asdict(arr))
-    if res is None:
-        raise TypeError("val is not a numpy array or a serialized numpy array")
-    if arr.dtype != res.dtype:  # pyright: ignore
-        raise TypeError(
-            f"dtype of val is incorrect.  Expected {arr.dtype}, received {res.dtype}"  # pyright: ignore
-        )
-    return res
+        print("Found dict")
+        val = SerializedNumpyArray(**val)
+    if isinstance(val, SerializedNumpyArray):
+        print("found SerializedNumpyArray")
+        res = uncompressNpArray(**val.model_dump())
+        if val.dtype != res.dtype:
+            raise TypeError(
+                f"dtype of res is incorrect.  Expected {val.dtype}, received {res.dtype}"
+            )
+        return res
+    raise TypeError(f"input has invalid type {type(val)}")
 
 
 NdArray = Annotated[

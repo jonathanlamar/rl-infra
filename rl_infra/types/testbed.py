@@ -1,11 +1,11 @@
 from typing import Protocol, TypeVar
 
-from numpy import bool, float64
+from numpy import float64
 from numpy.typing import NDArray
 
-from rl_infra.agent import Policy
-from rl_infra.bandit_problem import BanditProblem
-from rl_infra.transition import Action, Context
+from rl_infra.types.agent import Policy
+from rl_infra.types.bandit_problem import BanditProblem
+from rl_infra.types.transition import Action, Context
 
 C = TypeVar("C", bound=Context, covariant=False, contravariant=False)
 A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
@@ -17,6 +17,6 @@ class TestBed(Protocol[C, A, P]):
 
     def play(self, num_rounds: int) -> None: ...
 
-    def get_avg_reward_plot(self) -> NDArray[float64]: ...
+    def getAverageRewardsVector(self) -> NDArray[float64]: ...
 
-    def get_optimal_action_plot(self) -> NDArray[bool]: ...
+    def getPercentOptimalActionVector(self) -> NDArray[float64]: ...

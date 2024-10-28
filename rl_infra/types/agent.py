@@ -1,7 +1,7 @@
 from typing import Protocol, TypeVar
 
-from rl_infra.base_types import SerializableDataClass
-from rl_infra.transition import Action, Context
+from rl_infra.types.base_types import SerializableDataClass
+from rl_infra.types.transition import Action, Context
 
 
 class Policy(SerializableDataClass):
@@ -19,6 +19,6 @@ P = TypeVar("P", bound=Policy)
 class Agent(Protocol[C, A, P]):
     policy: P
 
-    def chooseAction(self, state: C) -> A: ...
+    def chooseAction(self, context: C) -> A: ...
 
     def updatePolicy(self, **kwargs) -> None: ...

@@ -1,6 +1,6 @@
 from typing import Protocol, TypeVar
 
-from rl_infra.transition import Action, Context, Transition
+from rl_infra.types.transition import Action, Context, Transition
 
 C = TypeVar("C", bound=Context)
 A = TypeVar("A", bound=Action)

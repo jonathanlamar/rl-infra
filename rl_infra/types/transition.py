@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Generic, TypeVar
 
-from rl_infra.base_types import SerializableDataClass
+from rl_infra.types.base_types import SerializableDataClass
 
 
 class Context(SerializableDataClass):
@@ -21,5 +21,6 @@ A = TypeVar("A", bound=Action, covariant=True)
 class Transition(ABC, SerializableDataClass, Generic[C, A]):
     context: C
     action: A
+    optimalAction: A
     newContext: C
     reward: float

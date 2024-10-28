@@ -15,7 +15,13 @@ install-sdist-local:
 .PHONY: lint
 lint:
 	ruff check rl_infra/
+	ruff check rl_infra/ --select I
 	mypy rl_infra/
+
+.PHONY: format
+format:
+	ruff check rl_infra/ --select I --fix
+	ruff format rl_infra/
 
 .PHONY: test
 test:

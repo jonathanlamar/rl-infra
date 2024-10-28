@@ -3,18 +3,18 @@ from typing import Protocol, TypeVar
 from numpy import bool, float64
 from numpy.typing import NDArray
 
-from rl_infra.types.agent import Agent, Policy
+from rl_infra.types.agent import Agent
 from rl_infra.types.environment import Environment
 from rl_infra.types.history import History
 from rl_infra.types.transition import Action, Context
 
-C = TypeVar("C", bound=Context, covariant=False, contravariant=False)
-A = TypeVar("A", bound=Action, covariant=False, contravariant=False)
-P = TypeVar("P", bound=Policy)
+C = TypeVar("C", bound=Context)
+A = TypeVar("A", bound=Action)
+Ag = TypeVar("Ag", bound=Agent)
 
 
-class BanditProblem(Protocol[C, A, P]):
-    agent: Agent[C, A, P]
+class BanditProblem(Protocol[C, A, Ag]):
+    agent: Ag
     environment: Environment[C, A]
     history: History[C, A]
 

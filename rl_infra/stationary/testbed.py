@@ -1,19 +1,19 @@
-from typing import Protocol, TypeVar
+from typing import Protocol, Sequence, TypeVar
 
 import numpy as np
 from numpy import float64
 from numpy.typing import NDArray
 
+from rl_infra.stationary.agent import StationaryBanditAgent
 from rl_infra.stationary.bandit_problem import StationaryBanditProblem
-from rl_infra.types.agent import Policy
 from rl_infra.types.testbed import TestBed
 from rl_infra.types.transition import Action, Context
 
-P = TypeVar("P", bound=Policy)
+Ag = TypeVar("Ag", bound=StationaryBanditAgent)
 
 
-class StationaryBanditTestBed(TestBed[Context, Action, P], Protocol[P]):
-    bandits: list[StationaryBanditProblem]
+class StationaryBanditTestBed(TestBed[Context, Action, Ag], Protocol[Ag]):
+    bandits: Sequence[StationaryBanditProblem[Ag]]
 
     def play(self, num_rounds: int) -> None:
         for bandit in self.bandits:

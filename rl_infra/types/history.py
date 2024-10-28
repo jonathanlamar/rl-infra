@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Generic, TypeVar
 
 import numpy as np
@@ -8,8 +7,8 @@ from numpy.typing import NDArray
 from rl_infra.types.base_types import SerializableDataClass
 from rl_infra.types.transition import Action, Context, Transition
 
-C = TypeVar("C", bound=Context, covariant=True)
-A = TypeVar("A", bound=Action, covariant=True)
+C = TypeVar("C", bound=Context)
+A = TypeVar("A", bound=Action)
 
 
 class History(SerializableDataClass, Generic[C, A]):

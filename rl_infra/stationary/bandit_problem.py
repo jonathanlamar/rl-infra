@@ -5,16 +5,15 @@ from numpy.typing import NDArray
 
 from rl_infra.stationary.agent import StationaryBanditAgent
 from rl_infra.stationary.environment import StationaryBanditEnvironment
-from rl_infra.types.agent import Policy
 from rl_infra.types.bandit_problem import BanditProblem
 from rl_infra.types.history import History
 from rl_infra.types.transition import Action, Context
 
-P = TypeVar("P", bound=Policy)
+A = TypeVar("A", bound=StationaryBanditAgent)
 
 
-class StationaryBanditProblem(BanditProblem[Context, Action, P], Protocol[P]):
-    agent: StationaryBanditAgent
+class StationaryBanditProblem(BanditProblem[Context, Action, A], Protocol[A]):
+    agent: A
     environment: StationaryBanditEnvironment
     history: History[Context, Action]
 

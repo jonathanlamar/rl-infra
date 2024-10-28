@@ -12,8 +12,8 @@ class Context(SerializableDataClass):
 
 Action = int
 
-C = TypeVar("C", bound=Context, covariant=True)
-A = TypeVar("A", bound=Action, covariant=True)
+C = TypeVar("C", bound=Context)
+A = TypeVar("A", bound=Action)
 
 
 # This is really an interface, but I have to use ABC here because pydantic does not

@@ -1,20 +1,16 @@
 from typing import Protocol, TypeVar
 
-from rl_infra.transition import Action, State, Transition
+from rl_infra.transition import Action, Context, Transition
 
-S_co = TypeVar("S_co", bound=State, covariant=True)
-A_co = TypeVar("A_co", bound=Action, covariant=True)
-
-
-S = TypeVar("S", bound=State)
+C = TypeVar("C", bound=Context)
 A = TypeVar("A", bound=Action)
 
 
-class Environment(Protocol[S, A]):
-    currentState: S
+class Environment(Protocol[C, A]):
+    currentState: C
 
-    def step(self, action: A) -> Transition[S, A]: ...
+    def step(self, action: A) -> Transition[C, A]: ...
 
-    def getReward(self, oldState: S, action: A, newState: S) -> float: ...
+    def getReward(self, oldState: C, action: A, newState: C) -> float: ...
 
     def startNewEpisode(self) -> None: ...

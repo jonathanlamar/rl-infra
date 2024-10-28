@@ -3,7 +3,7 @@ from typing import Protocol, TypeVar
 from numpy import bool, float64
 from numpy.typing import NDArray
 
-from rl_infra.agents.base_agent import Policy
+from rl_infra.agent import Policy
 from rl_infra.bandit_problem import BanditProblem
 from rl_infra.transition import Action, Context
 

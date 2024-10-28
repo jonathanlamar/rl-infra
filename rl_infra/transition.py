@@ -1,14 +1,7 @@
 from abc import ABC
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel
-
-
-class SerializableDataClass(BaseModel):
-    class Config:
-        allow_mutation = False
-        use_enum_values = True
-        orm_mode = True
+from rl_infra.base_types import SerializableDataClass
 
 
 class Context(SerializableDataClass):

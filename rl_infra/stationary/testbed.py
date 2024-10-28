@@ -1,4 +1,4 @@
-from typing import Protocol, Sequence, TypeVar
+from typing import Generic, Sequence, TypeVar
 
 import numpy as np
 from numpy import float64
@@ -12,7 +12,7 @@ from rl_infra.types.transition import Action, Context
 Ag = TypeVar("Ag", bound=StationaryBanditAgent)
 
 
-class StationaryBanditTestBed(TestBed[Context, Action, Ag], Protocol[Ag]):
+class StationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
     bandits: Sequence[StationaryBanditProblem[Ag]]
 
     def play(self, num_rounds: int) -> None:

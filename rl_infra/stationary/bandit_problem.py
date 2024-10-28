@@ -1,4 +1,4 @@
-from typing import Protocol, TypeVar
+from typing import Generic, TypeVar
 
 from numpy import bool, float64
 from numpy.typing import NDArray
@@ -12,7 +12,7 @@ from rl_infra.types.transition import Action, Context
 A = TypeVar("A", bound=StationaryBanditAgent)
 
 
-class StationaryBanditProblem(BanditProblem[Context, Action, A], Protocol[A]):
+class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
     agent: A
     environment: StationaryBanditEnvironment
     history: History[Context, Action]

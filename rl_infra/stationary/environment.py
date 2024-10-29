@@ -5,10 +5,10 @@ from rl_infra.types.transition import Action, Context, Transition
 
 
 class StationaryBanditEnvironment(Environment[Context, Action]):
-    def __init__(self, num_arms: int) -> None:
+    def __init__(self, numArms: int) -> None:
         self.currentContext = Context()
-        self.num_arms = num_arms
-        self.means = normal(0, 1, num_arms).tolist()
+        self.num_arms = numArms
+        self.means = normal(0, 1, numArms).tolist()
 
     def _getOptimalAction(self) -> Action:
         # TODO:  How is this implemented in the paper?  Is this best per expectation, or

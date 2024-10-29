@@ -17,13 +17,13 @@ class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
     environment: StationaryBanditEnvironment
     history: History[Context, Action]
 
-    def __init__(self, agentClass: Type[A], num_arms: int) -> None:
-        self.agent = agentClass(num_arms)
-        self.environment = StationaryBanditEnvironment(num_arms)  # pyright: ignore
+    def __init__(self, agentClass: Type[A], numArms: int) -> None:
+        self.agent = agentClass(numArms)
+        self.environment = StationaryBanditEnvironment(numArms)  # pyright: ignore
         self.history = []  # pyright: ignore
 
-    def play(self, num_rounds: int) -> None:
-        for _ in range(num_rounds):
+    def play(self, numRounds: int) -> None:
+        for _ in range(numRounds):
             self._playOnce()
 
     def _playOnce(self) -> None:

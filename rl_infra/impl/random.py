@@ -8,12 +8,12 @@ from rl_infra.types.transition import Action, Context
 
 
 class RandomAgent(StationaryBanditAgent[Policy]):
-    def __init__(self, num_arms: int) -> None:
+    def __init__(self, numArms: int) -> None:
         self.policy = Policy()
-        self.num_arms = num_arms
+        self.numArms = numArms
 
     def chooseAction(self, context: Context) -> Action:
-        return randint(0, self.num_arms - 1)
+        return randint(0, self.numArms - 1)
 
     def updatePolicy(self, **kwargs) -> None: ...
 
@@ -35,6 +35,11 @@ if __name__ == "__main__":
     parser = getParser()
     args = parser.parse_args()
 
+    print(
+        f"Initializing random stationary testbed with {args.num_bandits} bandits and "
+        + f"{args.num_arms} arms."
+    )
+
     testBed = StationaryBanditTestBed(
-        num_bandits=args.num_bandits, num_arms=args.num_arms
+        agentClass=RandomAgent, numBandits=args.num_bandits, numArms=args.num_arms
     )

@@ -8,6 +8,6 @@ P = TypeVar("P", bound=Policy)
 
 class StationaryBanditAgent(Agent[Context, Action, P], Protocol[P]):
     policy: P
-    num_arms: int
+    numArms: int
 
-    def __init__(self, num_arms: int) -> None: ...
+    def __init__(self, numArms: int) -> None: ...

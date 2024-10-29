@@ -1,4 +1,4 @@
-from typing import Generic, Sequence, TypeVar
+from typing import Generic, Sequence, Type, TypeVar
 
 import numpy as np
 from numpy import float64
@@ -15,15 +15,15 @@ Ag = TypeVar("Ag", bound=StationaryBanditAgent)
 class StationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
     bandits: Sequence[StationaryBanditProblem[Ag]]
 
-    def __init__(self, num_bandits: int, num_arms: int) -> None:
+    def __init__(self, agentClass: Type[Ag], numBandits: int, numArms: int) -> None:
         self.bandits = [  # pyright: ignore
-            StationaryBanditProblem[Ag](num_arms)  # pyright: ignore
-            for _ in range(num_bandits)
+            StationaryBanditProblem(agentClass, numArms)  # pyright: ignore
+            for _ in range(numBandits)
         ]
 
-    def play(self, num_rounds: int) -> None:
+    def play(self, numRounds: int) -> None:
         for bandit in self.bandits:
-            bandit.play(num_rounds)
+            bandit.play(numRounds)
 
     def getAverageRewardsVector(self) -> NDArray[float64]:
         return np.concat(

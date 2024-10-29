@@ -9,11 +9,7 @@ class StationaryBanditEnvironment(Environment[Context, Action]):
         self.currentContext = Context()
         self.num_arms = numArms
         self.means = normal(0, 1, numArms).tolist()
-
-    def _getOptimalAction(self) -> Action:
-        # TODO:  How is this implemented in the paper?  Is this best per expectation, or
-        # best observed?
-        return -1
+        self._optimalAction = self.means.index(max(self.means))
 
     def update(self, action: Action) -> Transition:
         if action not in range(self.num_arms):
@@ -22,7 +18,7 @@ class StationaryBanditEnvironment(Environment[Context, Action]):
         return Transition(
             context=self.currentContext,
             action=action,
-            optimalAction=action,
+            optimalAction=self._optimalAction,
             newContext=self.currentContext,
             reward=normal(self.means[action], 1),
         )

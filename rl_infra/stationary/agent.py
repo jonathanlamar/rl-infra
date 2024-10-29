@@ -9,3 +9,5 @@ P = TypeVar("P", bound=Policy)
 class StationaryBanditAgent(Agent[Context, Action, P], Protocol[P]):
     policy: P
     num_arms: int
+
+    def __init__(self, num_arms: int) -> None: ...

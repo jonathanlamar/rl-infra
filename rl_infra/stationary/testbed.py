@@ -15,6 +15,12 @@ Ag = TypeVar("Ag", bound=StationaryBanditAgent)
 class StationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
     bandits: Sequence[StationaryBanditProblem[Ag]]
 
+    def __init__(self, num_bandits: int, num_arms: int) -> None:
+        self.bandits = [  # pyright: ignore
+            StationaryBanditProblem[Ag](num_arms)  # pyright: ignore
+            for _ in range(num_bandits)
+        ]
+
     def play(self, num_rounds: int) -> None:
         for bandit in self.bandits:
             bandit.play(num_rounds)

@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar
+from typing import Generic, Type, TypeVar
 
 from numpy import bool, float64
 from numpy.typing import NDArray
@@ -16,6 +16,11 @@ class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
     agent: A
     environment: StationaryBanditEnvironment
     history: History[Context, Action]
+
+    def __init__(self, agentClass: Type[A], num_arms: int) -> None:
+        self.agent = agentClass(num_arms)
+        self.environment = StationaryBanditEnvironment(num_arms)  # pyright: ignore
+        self.history = []  # pyright: ignore
 
     def play(self, num_rounds: int) -> None:
         for _ in range(num_rounds):

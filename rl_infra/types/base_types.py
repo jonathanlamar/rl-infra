@@ -91,7 +91,7 @@ class SerializableDataClass(BaseModel):
     """
 
     model_config = ConfigDict(
-        frozen=True,
+        frozen=False,
         use_enum_values=True,
         from_attributes=True,
         arbitrary_types_allowed=True,

@@ -32,7 +32,7 @@ class StationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
     def getAverageRewardsVector(self) -> NDArray[float64]:
         return np.concat(
             [bandit.getRewardsVector().reshape(1, -1) for bandit in self.bandits]
-        ).mean(axis=1)
+        ).mean(axis=0)
 
     def getPercentOptimalActionVector(self) -> NDArray[float64]:
         return np.concat(

@@ -48,3 +48,10 @@ if __name__ == "__main__":
     testBed = StationaryBanditTestBed(
         agentClass=RandomAgent, numBandits=args.num_bandits, numArms=args.num_arms
     )
+
+    print(f"Playing testbed for {args.num_rounds} rounds.")
+    testBed.play(numRounds=args.num_rounds)
+
+    print("Done.")
+    print(f"Average rewards vector: {testBed.getAverageRewardsVector()}")
+    print(f"Hit percentage: {testBed.getPercentOptimalActionVector()}")

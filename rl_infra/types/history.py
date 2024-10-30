@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar
+from typing import Generic, List, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -30,10 +30,7 @@ class History(SerializableDataClass, Generic[C, A]):
     optimal action hits.
     """
 
-    historyVector: list[Event]
-
-    def __init__(self) -> None:
-        self.historyVector = []
+    historyVector: List[Event] = []
 
     def update(self, transition: Transition[C, A], optimalAction: A) -> None:
         self.historyVector.append(

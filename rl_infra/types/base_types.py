@@ -9,13 +9,21 @@ from typing_extensions import Annotated
 
 
 class SerializedNumpyArray(BaseModel):
+    r"""
+    Pydantic dataclass representing a base64-encoded numpy array.  Also encodes its
+    shape and dtype for easier deserialization.
+    """
+
     data: str
     shape: tuple[int, ...]
     dtype: str
 
 
 def compressNpArray(nparr: NDArray[Any]) -> SerializedNumpyArray:
-    """Returns the given numpy array as a base64 encoded string."""
+    r"""
+    Returns the given numpy array as a base64 encoded string.
+    """
+
     return SerializedNumpyArray(
         data=base64.b64encode(bytes(nparr)).decode("ascii"),
         shape=nparr.shape,
@@ -24,7 +32,10 @@ def compressNpArray(nparr: NDArray[Any]) -> SerializedNumpyArray:
 
 
 def uncompressNpArray(data: str, shape: tuple[int, ...], dtype: str) -> NDArray[Any]:
-    """Returns the given numpy array decoded from base64-encoded string."""
+    r"""
+    Returns the given numpy array decoded from base64-encoded string.
+    """
+
     dt = np.dtype(dtype)
     buff = base64.decodebytes(bytes(data, "ascii"))
     arr = np.frombuffer(buff, dtype=dt)
@@ -37,6 +48,11 @@ DType = TypeVar("DType")
 def validateSerializedNpArray(
     val: str | dict | SerializedNumpyArray | NDArray[Any],
 ) -> NDArray[Any]:
+    r"""
+    Validates and deserializes encoded numpy arrays from various intermediate types.
+    Throws if the input cannot represent a serialized numpy array.
+    """
+
     print(f"Found {val}, which has type {type(val)}")
     if isinstance(val, np.ndarray):
         print("Found array")
@@ -69,6 +85,11 @@ class NumpyArray(NDArray[Any], Generic[DType]): ...
 
 
 class SerializableDataClass(BaseModel):
+    r"""
+    Generic serializable object.  Extends pydantic BaseModel and sets global settings.
+    Allows for use of the numpy array serialization and validation.
+    """
+
     model_config = ConfigDict(
         frozen=True,
         use_enum_values=True,

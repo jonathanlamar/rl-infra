@@ -13,6 +13,11 @@ A = TypeVar("A", bound=StationaryBanditAgent)
 
 
 class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
+    r"""
+    Stationary bandit problem.  It operates in the stationary setting, which is context
+    free.  As such, its agent must be a subclass of StationaryBanditAgent.
+    """
+
     agent: A
     environment: StationaryBanditEnvironment
     history: History[Context, Action]
@@ -20,7 +25,7 @@ class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
     def __init__(self, agentClass: Type[A], numArms: int) -> None:
         self.agent = agentClass(numArms)
         self.environment = StationaryBanditEnvironment(numArms)  # pyright: ignore
-        self.history = []  # pyright: ignore
+        self.history = History[Context, Action]()
 
     def play(self, numRounds: int) -> None:
         for _ in range(numRounds):

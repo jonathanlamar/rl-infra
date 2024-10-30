@@ -13,6 +13,11 @@ Ag = TypeVar("Ag", bound=StationaryBanditAgent)
 
 
 class StationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
+    r"""
+    A testbed of stationary bandits.  This is a list of stationary bandit problems along
+    with a method for making all of them play.
+    """
+
     bandits: Sequence[StationaryBanditProblem[Ag]]
 
     def __init__(self, agentClass: Type[Ag], numBandits: int, numArms: int) -> None:

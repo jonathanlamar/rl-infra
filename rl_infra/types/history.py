@@ -12,6 +12,12 @@ A = TypeVar("A", bound=Action)
 
 
 class History(SerializableDataClass, Generic[C, A]):
+    r"""
+    Generic history class which represents a history of interactions between a bandit
+    agent and its environment.  Contains methods for retrieving the list of rewards and
+    optimal action hits.
+    """
+
     transitionHistory: list[Transition[C, A]]
 
     def __init__(self) -> None:

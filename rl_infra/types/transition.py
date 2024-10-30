@@ -16,9 +16,11 @@ C = TypeVar("C", bound=Context)
 A = TypeVar("A", bound=Action)
 
 
-# This is really an interface, but I have to use ABC here because pydantic does not
-# support mixing in with protocols.
 class Transition(ABC, SerializableDataClass, Generic[C, A]):
+    r"""
+    Dataclass representing a generic agent-environment interaction in a bandit problem.
+    """
+
     context: C
     action: A
     optimalAction: A

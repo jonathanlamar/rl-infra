@@ -5,6 +5,12 @@ from rl_infra.types.transition import Action, Context, Transition
 
 
 class StationaryBanditEnvironment(Environment[Context, Action]):
+    r"""
+    Represents a stationary bandit environment.  Contains an empty context and a no-op
+    method for updating context based on agent action, which returns the reward in a
+    Transition instance.
+    """
+
     def __init__(self, numArms: int) -> None:
         self.currentContext = Context()
         self.num_arms = numArms

@@ -13,6 +13,14 @@ Ag = TypeVar("Ag", bound=Agent)
 
 
 class TestBed(Protocol[C, A, Ag]):
+    r"""
+    Generic interface for a bandit testbed.  This is a list of bandit problems along
+    with a method for making all of them play.  Also contains methods for retrieving
+    vectors of average rewards per time step (averaged over the list of bandit problems)
+    and percent optimal action (average number of bandits choosing the optimal action at
+    each time step).
+    """
+
     bandits: Sequence[BanditProblem[C, A, Ag]]
 
     def play(self, numRounds: int) -> None: ...

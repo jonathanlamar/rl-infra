@@ -22,8 +22,8 @@ class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
     environment: StationaryBanditEnvironment
     history: History[Context, Action]
 
-    def __init__(self, agentClass: Type[A], numArms: int) -> None:
-        self.agent = agentClass(numArms)
+    def __init__(self, agentClass: Type[A], numArms: int, **kwargs) -> None:
+        self.agent = agentClass(numArms, **kwargs)
         self.environment = StationaryBanditEnvironment(numArms)  # pyright: ignore
         self.history = History[Context, Action]()
 

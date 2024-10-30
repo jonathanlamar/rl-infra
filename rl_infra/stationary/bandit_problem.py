@@ -35,7 +35,8 @@ class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
         context = self.environment.currentContext
         action = self.agent.chooseAction(context)
         transition = self.environment.update(action)
-        self.history.update(transition)
+        optimalAction = self.environment.getOptimalAction()
+        self.history.update(transition, optimalAction)
         self.agent.updatePolicy(transition=transition)
 
     def getRewardsVector(self) -> NDArray[float64]:

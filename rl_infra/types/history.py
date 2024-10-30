@@ -1,7 +1,6 @@
 from typing import Generic, TypeVar
 
 import numpy as np
-from numpy import bool, float64
 from numpy.typing import NDArray
 
 from rl_infra.types.base_types import SerializableDataClass
@@ -11,6 +10,19 @@ C = TypeVar("C", bound=Context)
 A = TypeVar("A", bound=Action)
 
 
+class Event(SerializableDataClass, Generic[C, A]):
+    r"""
+    Dataclass representing a generic history event, which is defined as a transition and
+    an optimal action for that transition.
+    """
+
+    transition: Transition[C, A]
+    optimalAction: A
+
+    def actionWasHit(self) -> bool:
+        return self.transition.action == self.optimalAction
+
+
 class History(SerializableDataClass, Generic[C, A]):
     r"""
     Generic history class which represents a history of interactions between a bandit
@@ -18,21 +30,18 @@ class History(SerializableDataClass, Generic[C, A]):
     optimal action hits.
     """
 
-    transitionHistory: list[Transition[C, A]]
+    historyVector: list[Event]
 
     def __init__(self) -> None:
-        self.transitionHistory = []
+        self.historyVector = []
 
-    def update(self, transition: Transition[C, A]) -> None:
-        self.transitionHistory.append(transition)
-
-    def getRewardsVector(self) -> NDArray[float64]:
-        return np.array([transition.reward for transition in self.transitionHistory])
-
-    def getOptimalActionHitsVector(self) -> NDArray[bool]:
-        return np.array(
-            [
-                transition.action == transition.optimalAction
-                for transition in self.transitionHistory
-            ]
+    def update(self, transition: Transition[C, A], optimalAction: A) -> None:
+        self.historyVector.append(
+            Event(transition=transition, optimalAction=optimalAction)
         )
+
+    def getRewardsVector(self) -> NDArray[np.float64]:
+        return np.array([event.transition.reward for event in self.historyVector])
+
+    def getOptimalActionHitsVector(self) -> NDArray[np.bool]:
+        return np.array([event.actionWasHit() for event in self.historyVector])

@@ -22,8 +22,7 @@ class StationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
 
     def __init__(self, agentClass: Type[Ag], numBandits: int, numArms: int) -> None:
         self.bandits = [  # pyright: ignore
-            StationaryBanditProblem(agentClass, numArms)  # pyright: ignore
-            for _ in range(numBandits)
+            StationaryBanditProblem(agentClass, numArms) for _ in range(numBandits)
         ]
 
     def play(self, numRounds: int) -> None:

@@ -24,7 +24,9 @@ class StationaryBanditEnvironment(Environment[Context, Action]):
         return Transition(
             context=self.currentContext,
             action=action,
-            optimalAction=self._optimalAction,
             newContext=self.currentContext,
             reward=normal(self.means[action], 1),
         )
+
+    def getOptimalAction(self) -> Action:
+        return self._optimalAction

@@ -3,6 +3,7 @@ from random import randint, random
 from pydantic import field_validator
 
 from rl_infra.impl.executable_utils import getParser, runTestBed
+from rl_infra.impl.random import RandomAgent
 from rl_infra.stationary.agent import StationaryBanditAgent
 from rl_infra.stationary.testbed import StationaryBanditTestBed
 from rl_infra.types.agent import Policy
@@ -15,7 +16,7 @@ class ActionValuePolicy(Policy):
 
     @field_validator("numSteps")
     @classmethod
-    def numStepsShouldAllBePositive(cls, val: list[int]) -> list[int]:
+    def numStepsShouldAllBeNonNegative(cls, val: list[int]) -> list[int]:
         if any([v < 0 for v in val]):
             raise ValueError("Elements of numSteps should all be nonnegative.")
         return val
@@ -68,11 +69,15 @@ if __name__ == "__main__":
         + f"and {args.num_arms} arms."
     )
 
-    testBed = StationaryBanditTestBed(
+    randomTestBed = StationaryBanditTestBed(
+        agentClass=RandomAgent, numBandits=args.num_bandits, numArms=args.num_arms
+    )
+
+    actionValueTestBed = StationaryBanditTestBed(
         agentClass=ActionValueAgent,
         numBandits=args.num_bandits,
         numArms=args.num_arms,
         epsilon=0.1,
     )
 
-    runTestBed(args, action_value=testBed)
+    runTestBed(args, random=randomTestBed, action_value=actionValueTestBed)

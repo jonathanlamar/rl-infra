@@ -33,6 +33,9 @@ class ActionValuePolicy(Policy):
         )
         self.numSteps[action] += 1
 
+        # TODO: Find better way to validate upon changing an element of a list.
+        _ = self.numStepsShouldAllBeNonNegative(self.numSteps)
+
 
 class ActionValueAgent(StationaryBanditAgent[ActionValuePolicy]):
     r"""

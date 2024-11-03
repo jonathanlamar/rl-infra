@@ -30,9 +30,10 @@ def _makePlot(arrays: dict[str, NDArray[np.float64]], yAxLabel: str) -> None:
             arr,
             marker="o",
             linestyle="-",
-            linewidth=2,
-            markersize=6,
+            linewidth=1,
+            markersize=2,
             label=lbl,
+            alpha=0.5,
         )
     plt.xlabel("Steps")
     plt.ylabel(yAxLabel)

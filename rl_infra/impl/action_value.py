@@ -1,9 +1,8 @@
 from random import randint, random
 
-import numpy as np
 from pydantic import field_validator
 
-from rl_infra.impl.executable_utils import getParser, plotHitRate, plotRewards
+from rl_infra.impl.executable_utils import getParser, runTestBed
 from rl_infra.stationary.agent import StationaryBanditAgent
 from rl_infra.stationary.testbed import StationaryBanditTestBed
 from rl_infra.types.agent import Policy
@@ -65,8 +64,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(
-        f"Initializing random stationary testbed with {args.num_bandits} bandits and "
-        + f"{args.num_arms} arms."
+        f"Initializing action-value stationary testbed with {args.num_bandits} bandits "
+        + f"and {args.num_arms} arms."
     )
 
     testBed = StationaryBanditTestBed(
@@ -76,17 +75,4 @@ if __name__ == "__main__":
         epsilon=0.1,
     )
 
-    print(f"Playing testbed for {args.num_rounds} rounds.")
-    testBed.play(numRounds=args.num_rounds)
-
-    print("Done.")
-
-    avgRewards = testBed.getAverageRewardsVector()
-    optimalHitRate = testBed.getPercentOptimalActionVector()
-
-    plotRewards(avgRewards, args.save_files)
-    plotHitRate(optimalHitRate, args.save_files)
-
-    if args.save_files:
-        np.save("avg_rewards.npy", avgRewards)
-        np.save("hitrate.npy", optimalHitRate)
+    runTestBed(args, action_value=testBed)

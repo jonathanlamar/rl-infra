@@ -1,6 +1,6 @@
 from typing import Protocol, Sequence, TypeVar
 
-from numpy import float64
+import numpy as np
 from numpy.typing import NDArray
 
 from rl_infra.types.agent import Agent
@@ -23,8 +23,19 @@ class TestBed(Protocol[C, A, Ag]):
 
     bandits: Sequence[BanditProblem[C, A, Ag]]
 
-    def play(self, numRounds: int) -> None: ...
+    def play(self, numRounds: int) -> None:
+        for bandit in self.bandits:
+            bandit.play(numRounds)
 
-    def getAverageRewardsVector(self) -> NDArray[float64]: ...
+    def getAverageRewardsVector(self) -> NDArray[np.float64]:
+        return np.concat(
+            [bandit.getRewardsVector().reshape(1, -1) for bandit in self.bandits]
+        ).mean(axis=0)
 
-    def getPercentOptimalActionVector(self) -> NDArray[float64]: ...
+    def getPercentOptimalActionVector(self) -> NDArray[np.float64]:
+        return np.concat(
+            [
+                bandit.getOptimalActionHitsVector().reshape(1, -1)
+                for bandit in self.bandits
+            ]
+        ).mean(axis=0)

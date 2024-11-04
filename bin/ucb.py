@@ -8,8 +8,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(
-        f"Initializing action-value stationary testbed with {args.num_bandits} bandits "
-        + f"and {args.num_arms} arms."
+        f"Initializing ucb stationary testbed with {args.num_bandits} bandits and "
+        + f"{args.num_arms} arms."
     )
 
     actionValueTestBed = StationaryBanditTestBed(

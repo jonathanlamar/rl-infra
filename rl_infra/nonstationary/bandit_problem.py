@@ -4,7 +4,7 @@ from numpy import bool, float64
 from numpy.typing import NDArray
 
 from rl_infra.nonstationary.context import NonstationaryContext
-from rl_infra.nonstationary.environment import NonStationaryBanditEnvironment
+from rl_infra.nonstationary.environment import NonstationaryBanditEnvironment
 from rl_infra.types.agent import Agent
 from rl_infra.types.bandit_problem import BanditProblem
 from rl_infra.types.history import History
@@ -22,12 +22,12 @@ class NonstationaryBanditProblem(
     """
 
     agent: A
-    environment: NonStationaryBanditEnvironment
+    environment: NonstationaryBanditEnvironment
     history: History[NonstationaryContext, Action]
 
     def __init__(self, agentClass: Type[A], **kwargs) -> None:
         self.agent = agentClass(**kwargs)
-        self.environment = NonStationaryBanditEnvironment()  # pyright: ignore
+        self.environment = NonstationaryBanditEnvironment()  # pyright: ignore
         self.history = History[NonstationaryContext, Action]()
 
     def play(self, numRounds: int) -> None:

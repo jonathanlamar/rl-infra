@@ -14,7 +14,7 @@ from rl_infra.types.transition import Action, Transition
 NUM_USERS = 2
 
 
-class NonStationaryBanditEnvironment(Environment[NonstationaryContext, Action]):
+class NonstationaryBanditEnvironment(Environment[NonstationaryContext, Action]):
     r"""
     Represents a nonstationary bandit environment.  This implements the "disjoint
     linear" models problem described in Li et al 2012, section 3.1

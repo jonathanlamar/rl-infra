@@ -1,8 +1,5 @@
 from typing import Generic, Type, TypeVar
 
-from numpy import bool, float64
-from numpy.typing import NDArray
-
 from rl_infra.stationary.agent import StationaryBanditAgent
 from rl_infra.stationary.environment import StationaryBanditEnvironment
 from rl_infra.types.bandit_problem import BanditProblem
@@ -22,25 +19,7 @@ class StationaryBanditProblem(BanditProblem[Context, Action, A], Generic[A]):
     environment: StationaryBanditEnvironment
     history: History[Context, Action]
 
-    def __init__(self, agentClass: Type[A], numArms: int, **kwargs) -> None:
-        self.agent = agentClass(numArms, **kwargs)
-        self.environment = StationaryBanditEnvironment(numArms)  # pyright: ignore
+    def __init__(self, agentClass: Type[A], **kwargs) -> None:
+        self.agent = agentClass(**kwargs)
+        self.environment = StationaryBanditEnvironment(numArms=kwargs["numArms"])  # pyright: ignore
         self.history = History[Context, Action]()
-
-    def play(self, numRounds: int) -> None:
-        for _ in range(numRounds):
-            self._playOnce()
-
-    def _playOnce(self) -> None:
-        context = self.environment.currentContext
-        action = self.agent.chooseAction(context)
-        transition = self.environment.update(action)
-        optimalAction = self.environment.getOptimalAction()
-        self.history.update(transition, optimalAction)
-        self.agent.updatePolicy(transition=transition)
-
-    def getRewardsVector(self) -> NDArray[float64]:
-        return self.history.getRewardsVector()
-
-    def getOptimalActionHitsVector(self) -> NDArray[bool]:
-        return self.history.getOptimalActionHitsVector()

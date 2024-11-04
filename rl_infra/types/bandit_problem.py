@@ -28,8 +28,20 @@ class BanditProblem(Protocol[C, A, Ag]):
     environment: Environment[C, A]
     history: History[C, A]
 
-    def play(self, numRounds: int) -> None: ...
+    def play(self, numRounds: int) -> None:
+        for _ in range(numRounds):
+            self._playOnce()
 
-    def getRewardsVector(self) -> NDArray[float64]: ...
+    def _playOnce(self) -> None:
+        context = self.environment.currentContext
+        action = self.agent.chooseAction(context)
+        transition = self.environment.update(action)
+        optimalAction = self.environment.getOptimalAction()
+        self.history.update(transition, optimalAction)  # pyright: ignore
+        self.agent.updatePolicy(transition=transition)
 
-    def getOptimalActionHitsVector(self) -> NDArray[bool]: ...
+    def getRewardsVector(self) -> NDArray[float64]:
+        return self.history.getRewardsVector()
+
+    def getOptimalActionHitsVector(self) -> NDArray[bool]:
+        return self.history.getOptimalActionHitsVector()

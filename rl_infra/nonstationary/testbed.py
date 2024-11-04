@@ -1,0 +1,43 @@
+from typing import Generic, Sequence, Type, TypeVar
+
+import numpy as np
+from numpy import float64
+from numpy.typing import NDArray
+
+from rl_infra.nonstationary.bandit_problem import NonstationaryBanditProblem
+from rl_infra.types.agent import Agent
+from rl_infra.types.testbed import TestBed
+from rl_infra.types.transition import Action, Context
+
+Ag = TypeVar("Ag", bound=Agent)
+
+
+class NonstationaryBanditTestBed(TestBed[Context, Action, Ag], Generic[Ag]):
+    r"""
+    A testbed of nonstationary bandits.  This is a list of nonstationary bandit problems
+    along with a method for making all of them play.
+    """
+
+    bandits: Sequence[NonstationaryBanditProblem[Ag]]
+
+    def __init__(self, agentClass: Type[Ag], numBandits: int, **kwargs) -> None:
+        self.bandits = [  # pyright: ignore
+            NonstationaryBanditProblem(agentClass, **kwargs) for _ in range(numBandits)
+        ]
+
+    def play(self, numRounds: int) -> None:
+        for bandit in self.bandits:
+            bandit.play(numRounds)
+
+    def getAverageRewardsVector(self) -> NDArray[float64]:
+        return np.concat(
+            [bandit.getRewardsVector().reshape(1, -1) for bandit in self.bandits]
+        ).mean(axis=0)
+
+    def getPercentOptimalActionVector(self) -> NDArray[float64]:
+        return np.concat(
+            [
+                bandit.getOptimalActionHitsVector().reshape(1, -1)
+                for bandit in self.bandits
+            ]
+        ).mean(axis=0)

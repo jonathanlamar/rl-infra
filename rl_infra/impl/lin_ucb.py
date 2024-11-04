@@ -94,7 +94,7 @@ class LinUcbPolicy(Policy):
         self.actionValues[action] += reward * x
 
 
-class LinUcbUcbAgent(Agent[NonstationaryContext, Action, LinUcbPolicy]):
+class LinUcbAgent(Agent[NonstationaryContext, Action, LinUcbPolicy]):
     r"""
     A stationary bandit agent based on the UCB estimator:
         A_t = argmax(Q_t(a) + c\sqrt{\log(t)/N_t(a)}),

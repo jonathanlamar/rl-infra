@@ -1,9 +1,9 @@
-from rl_infra.impl.executable_utils import getParser, runTestBed
+from rl_infra.impl.executable_utils import getStationaryParser, runTestBed
 from rl_infra.impl.random import RandomAgent
 from rl_infra.stationary.testbed import StationaryBanditTestBed
 
 if __name__ == "__main__":
-    parser = getParser()
+    parser = getStationaryParser()
     args = parser.parse_args()
 
     print(

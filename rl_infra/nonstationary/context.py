@@ -1,14 +1,12 @@
-from typing import Self
-
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import field_validator, model_validator
+from typing_extensions import Self
 
 from rl_infra.types.transition import Action, Context
 
-NUM_USERS = 100
-NUM_ACTIONS = 100
-FEATURE_VECTOR_DIMENSION = 10
+NUM_ACTIONS = 20
+FEATURE_VECTOR_DIMENSION = 3
 
 
 class NonstationaryContext(Context):
@@ -44,26 +42,27 @@ class NonstationaryContext(Context):
 
     @model_validator(mode="after")
     def featureVecRowsEqualsAvailableActions(self) -> Self:
-        if self.featureVectors.shape[0] != len(self.availableActions):
+        if self.featureVectors.shape[1] != len(self.availableActions):
             raise ValueError(
                 "Row count in feature vectors must match number of available actions"
             )
         return self
 
     @classmethod
-    def randomNonstationaryContext(cls) -> "NonstationaryContext":
-        randomUser = np.random.choice(NUM_USERS)
+    def randomNonstationaryContext(cls, user: int) -> "NonstationaryContext":
         randomNumberOfActions = np.random.randint(1, NUM_ACTIONS + 1)
-        randomAvailableActions = np.random.choice(
-            np.arange(NUM_ACTIONS), randomNumberOfActions
-        ).tolist()
+        randomAvailableActions = sorted(
+            np.random.choice(
+                np.arange(NUM_ACTIONS), randomNumberOfActions, replace=False
+            ).tolist()
+        )
 
         randomFeatureVectors = np.random.normal(
             0, 1, size=(FEATURE_VECTOR_DIMENSION, randomNumberOfActions)
         )
 
         return NonstationaryContext(
-            user=randomUser,
+            user=user,
             availableActions=randomAvailableActions,
             featureVectors=randomFeatureVectors,
         )

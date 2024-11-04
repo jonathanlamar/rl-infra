@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import field_validator
 
-from rl_infra.nonstationary.transition import (
+from rl_infra.nonstationary.context import (
     FEATURE_VECTOR_DIMENSION,
     NUM_ACTIONS,
     NonstationaryContext,
@@ -12,21 +12,27 @@ from rl_infra.types.transition import Action, Transition
 
 
 class LinUcbPolicy(Policy):
-    # b "response vector" - aggregated observed rewards
+    # b, the "response vector" - aggregated observed rewards
     actionValues: NDArray[np.float64] = np.zeros(
         shape=(NUM_ACTIONS, FEATURE_VECTOR_DIMENSION)
     )
-    # A "covariance matrix"
+    # A, the "covariance matrix"
     estimatedCovarianceMatrix: NDArray[np.float64] = np.concat(
-        [np.identity(FEATURE_VECTOR_DIMENSION).reshape(-1, -1, 1)] * NUM_ACTIONS, axis=2
+        [
+            np.identity(FEATURE_VECTOR_DIMENSION).reshape(
+                FEATURE_VECTOR_DIMENSION, FEATURE_VECTOR_DIMENSION, 1
+            )
+        ]
+        * NUM_ACTIONS,
+        axis=2,
     )
-    # Theta estimated coefficients
+    # Theta, the estimated coefficients
     estimatedCoefficientMatrix: NDArray[np.float64] = np.zeros(
         shape=(FEATURE_VECTOR_DIMENSION, NUM_ACTIONS)
     )
-    # p UCB values
+    # p, the UCB values
     ucbValues: NDArray[np.float64] = np.zeros(shape=(NUM_ACTIONS,))
-    # alpha
+    # alpha, the exploration factor
     explorationFactor: float
 
     @field_validator("explorationFactor")
@@ -36,10 +42,12 @@ class LinUcbPolicy(Policy):
             raise ValueError("explorationFactor should be positive.")
         return val
 
-    def getMaxValueIndex(self) -> int:
-        maxValMask = self.ucbValues == self.ucbValues.max()
+    def getMaxValueIndex(self, context: NonstationaryContext) -> int:
+        valsOfInterest = self.ucbValues[context.availableActions]
+        maxValMask = valsOfInterest == valsOfInterest.max()
         indexes = np.where(maxValMask)[0]
-        return np.random.choice(indexes)
+        bestIndex = np.random.choice(indexes)
+        return context.availableActions[bestIndex]
 
     def update(
         self, action: Action, context: NonstationaryContext, reward: float
@@ -50,39 +58,43 @@ class LinUcbPolicy(Policy):
         self._updateActionValues(action, context, reward)
 
     def _updateCoefficientMatrix(self, context: NonstationaryContext) -> None:
-        for a in context.availableActions:
-            self.estimatedCoefficientMatrix[:, a] = np.matmul(
-                np.pow(self.estimatedCovarianceMatrix[:, :, a], -1),
-                self.actionValues[a],
+        for action in context.availableActions:
+            self.estimatedCoefficientMatrix[:, action] = np.matmul(
+                np.pow(self.estimatedCovarianceMatrix[:, :, action], -1),
+                self.actionValues[action],
             )
 
     def _updateUcbValues(self, context: NonstationaryContext) -> None:
-        for a in context.availableActions:
-            featVec = context.featureVectors[:, a]
-            coeffs = self.estimatedCoefficientMatrix[:, a]
-            covMat = self.estimatedCovarianceMatrix[:, :, a]
-            estimatedMean = np.dot(coeffs, featVec)
+        for i, action in enumerate(context.availableActions):
+            featVec = context.featureVectors[:, i]
+            coeffs = self.estimatedCoefficientMatrix[:, action]
+            covMat = self.estimatedCovarianceMatrix[:, :, action]
+            estimatedMean = np.dot(coeffs.T, featVec)
             confIntervalSize = np.matmul(
                 featVec.T, np.matmul(np.pow(covMat, -1), featVec)
             )
-            self.ucbValues[a] = (
-                estimatedMean + self.explorationFactor * confIntervalSize
+            ucbEstimate = np.nan_to_num(
+                estimatedMean + self.explorationFactor * np.sqrt(confIntervalSize),
+                nan=np.inf,
             )
+            self.ucbValues[action] = ucbEstimate
 
     def _updateCovarianceMatrix(
         self, action: Action, context: NonstationaryContext
     ) -> None:
-        x = context.featureVectors[action]
-        self.estimatedCovarianceMatrix[action] += np.dot(x, x)
+        actionIndex = context.availableActions.index(action)
+        x = context.featureVectors[:, actionIndex]
+        self.estimatedCovarianceMatrix[:, :, action] += np.matmul(x, x.T)
 
     def _updateActionValues(
         self, action: Action, context: NonstationaryContext, reward: float
     ) -> None:
-        x = context.featureVectors[action]
+        actionIndex = context.availableActions.index(action)
+        x = context.featureVectors[:, actionIndex]
         self.actionValues[action] += reward * x
 
 
-class StationaryUcbAgent(Agent[NonstationaryContext, Action, LinUcbPolicy]):
+class LinUcbUcbAgent(Agent[NonstationaryContext, Action, LinUcbPolicy]):
     r"""
     A stationary bandit agent based on the UCB estimator:
         A_t = argmax(Q_t(a) + c\sqrt{\log(t)/N_t(a)}),
@@ -95,8 +107,8 @@ class StationaryUcbAgent(Agent[NonstationaryContext, Action, LinUcbPolicy]):
         self.policy = LinUcbPolicy(explorationFactor=alpha)
 
     def chooseAction(self, context: NonstationaryContext) -> Action:
-        return self.policy.getMaxValueIndex()
+        return self.policy.getMaxValueIndex(context)
 
     def updatePolicy(self, **kwargs) -> None:
         transition: Transition = kwargs["transition"]
-        self.policy.update(transition.action, transition.reward)
+        self.policy.update(transition.action, transition.context, transition.reward)

@@ -1,13 +1,17 @@
+import random
+
 import numpy as np
 from numpy.typing import NDArray
 
-from rl_infra.nonstationary.transition import (
+from rl_infra.nonstationary.context import (
     FEATURE_VECTOR_DIMENSION,
     NUM_ACTIONS,
     NonstationaryContext,
 )
 from rl_infra.types.environment import Environment
 from rl_infra.types.transition import Action, Transition
+
+NUM_USERS = 2
 
 
 class NonStationaryBanditEnvironment(Environment[NonstationaryContext, Action]):
@@ -16,12 +20,14 @@ class NonStationaryBanditEnvironment(Environment[NonstationaryContext, Action]):
     linear" models problem described in Li et al 2012, section 3.1
     """
 
-    def __init__(self, numUsers: int, maxNumActions: int) -> None:
-        self.numUsers = numUsers
-        self.maxNumActions = maxNumActions
-        self.currentContext = NonstationaryContext.randomNonstationaryContext()
+    def __init__(self) -> None:
+        self.contexts = [
+            NonstationaryContext.randomNonstationaryContext(user=i)
+            for i in range(NUM_USERS)
+        ]
+        self.currentContext = random.choice(self.contexts)
         self.coefficientVectors = np.random.normal(
-            0, 1, size=(NUM_ACTIONS, FEATURE_VECTOR_DIMENSION)
+            0, 1, size=(FEATURE_VECTOR_DIMENSION, NUM_ACTIONS)
         )
 
     def update(self, action: Action) -> Transition:
@@ -30,9 +36,10 @@ class NonStationaryBanditEnvironment(Environment[NonstationaryContext, Action]):
 
         actionIndex = self.currentContext.availableActions.index(action)
         calculatedReward = self._calculateMeanRewards()[actionIndex]
+        oldContext = self.currentContext
 
         return Transition(
-            context=self.currentContext,
+            context=oldContext,
             action=action,
             newContext=self.currentContext,
             reward=calculatedReward,
@@ -41,8 +48,8 @@ class NonStationaryBanditEnvironment(Environment[NonstationaryContext, Action]):
     def _calculateMeanRewards(self) -> NDArray:
         return np.diagonal(
             np.matmul(
-                self.coefficientVectors[:, self.currentContext.availableActions],
-                self.currentContext.featureVectors.T,
+                self.coefficientVectors[:, self.currentContext.availableActions].T,
+                self.currentContext.featureVectors,
             )
         )
 

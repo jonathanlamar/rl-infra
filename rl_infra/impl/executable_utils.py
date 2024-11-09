@@ -8,22 +8,14 @@ from numpy.typing import NDArray
 from rl_infra.types.testbed import TestBed
 
 
-def getStationaryParser() -> argparse.ArgumentParser:
+def getParser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--num-arms", "-a", type=int, help="Number of arms on each bandit"
+        "--num-arms",
+        "-a",
+        type=int,
+        help="Number of arms on each bandit, or maximum number of arms for a nonstationary bandit problem.",
     )
-    parser.add_argument(
-        "--num-bandits", "-b", type=int, help="Number of bandits in the testbed"
-    )
-    parser.add_argument("--num-rounds", "-r", type=int, help="Number of rounds to play")
-    parser.add_argument("--save-files", action="store_true", default=False)
-
-    return parser
-
-
-def getNonstationaryParser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--num-bandits", "-b", type=int, help="Number of bandits in the testbed"
     )

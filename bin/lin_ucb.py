@@ -1,9 +1,9 @@
-from rl_infra.impl.executable_utils import getNonstationaryParser, runTestBed
+from rl_infra.impl.executable_utils import getParser, runTestBed
 from rl_infra.impl.lin_ucb import LinUcbAgent
 from rl_infra.nonstationary.testbed import NonstationaryBanditTestBed
 
 if __name__ == "__main__":
-    parser = getNonstationaryParser()
+    parser = getParser()
     args = parser.parse_args()
 
     print(
